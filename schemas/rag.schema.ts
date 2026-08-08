@@ -728,6 +728,18 @@ export const KnowledgeGapResponseSchema = z.object({
   gapsDetected: z.array(KnowledgeGapSchema),
 });
 
+// ---------------------------------------------------------------------------
+// Hallucination Guard Schemas (Milestone 7.21)
+// ---------------------------------------------------------------------------
+
+export const HallucinationGuardResponseSchema = z.object({
+  supported: z.boolean(),
+  confidence: z.number().min(0).max(1),
+  unsupportedClaims: z.array(z.string()),
+  explanation: z.string().min(1, "explanation is required"),
+});
+
+
 
 
 

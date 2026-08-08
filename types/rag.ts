@@ -820,6 +820,18 @@ export interface KnowledgeGapResponse {
   gapsDetected: KnowledgeGap[];
 }
 
+// ---------------------------------------------------------------------------
+// Hallucination Guard Contracts (Milestone 7.21)
+// ---------------------------------------------------------------------------
+
+export interface HallucinationGuardResponse {
+  supported: boolean;
+  confidence: number;
+  unsupportedClaims: string[];
+  explanation: string;
+}
+
+
 
 
 

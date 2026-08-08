@@ -192,6 +192,20 @@
         "attempts": 1,
         "timestamp": "2026-08-08T09:10:46.400Z",
         "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:12:07.134Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:12:07.134Z",
+        "notes": "Strong grasp of dense vector representations"
       }
     ]
   },
