@@ -3,34 +3,29 @@
  *
  * Curriculum Data Service
  *
- * Loads and indexes the hackathon curriculum JSON. Provides typed, O(1)
- * lookup of curriculum days for use by the AI modules and Interview Controller.
+ * Loads and indexes the hackathon curriculum JSON. Delegates validation
+ * and normalization to the Data Loading Layer (lib/loaders/curriculum-loader).
+ * Provides typed, O(1) lookup of curriculum days for AI modules and Interview Controller.
  *
  * Owner: Member 2 (Backend / API)
- *
- * TODO: After receiving the official hackathon curriculum.json:
- *   1. Update CurriculumDay type in types/curriculum.ts to match actual schema
- *   2. Replace data/curriculum.json with the real curriculum data
- *   3. Add any curriculum-specific validation here
  */
 
 import type { CurriculumDay, CurriculumIndex } from "@/types/curriculum";
+import {
+  loadCurriculum as loadCurriculumData,
+  getCurriculumIndex as getIndexFromLoader,
+  getCurriculumDay as getDayFromLoader,
+} from "@/lib/loaders/curriculum-loader";
 
 // ---------------------------------------------------------------------------
-// Data Loading
+// Data Loading Cache
 // ---------------------------------------------------------------------------
 
-/**
- * Lazily loaded curriculum data.
- * Loaded once on first access and cached for the server process lifetime.
- *
- * TODO: In production, consider reloading on deployment without restarting.
- */
 let _curriculumCache: CurriculumDay[] | null = null;
 
 /**
- * Loads and returns the full curriculum as an ordered array.
- * Data is read from data/curriculum.json.
+ * Loads and returns the full curriculum as an ordered array of CurriculumDay objects.
+ * Data is read and validated from data/curriculum.json.
  *
  * @returns Array of CurriculumDay objects
  * @throws {Error} If the data file cannot be loaded or is invalid
@@ -38,32 +33,8 @@ let _curriculumCache: CurriculumDay[] | null = null;
 export async function loadCurriculum(): Promise<CurriculumDay[]> {
   if (_curriculumCache) return _curriculumCache;
 
-  // The real curriculum.json is an object { cohort, modules, days: [...] }
-  // Each day uses `title` and `objectives` instead of `topic` and `learningObjectives`
-  const raw = (await import("@/data/curriculum.json")).default as unknown;
-
-  // Handle both array format (scaffold) and real object format
-  let days: Record<string, unknown>[];
-  if (Array.isArray(raw)) {
-    days = raw as Record<string, unknown>[];
-  } else if (raw && typeof raw === "object" && "days" in raw) {
-    days = (raw as { days: Record<string, unknown>[] }).days;
-  } else {
-    throw new Error("curriculum.json must contain a JSON array or an object with a 'days' array");
-  }
-
-  // Normalize field names to match CurriculumDay type
-  _curriculumCache = days.map((d) => ({
-    day: d.day as number,
-    module: (d.module ?? d.type ?? "") as string,
-    // Real JSON uses 'title', type uses 'topic' — support both
-    topic: (d.topic ?? d.title ?? `Day ${d.day}`) as string,
-    // Real JSON uses 'objectives', type uses 'learningObjectives' — support both
-    learningObjectives: (d.learningObjectives ?? d.objectives ?? []) as string[],
-    tools: (d.tools ?? []) as string[],
-    concepts: (d.concepts ?? []) as string[],
-  })) as CurriculumDay[];
-
+  const curriculumData = await loadCurriculumData();
+  _curriculumCache = curriculumData.days;
   return _curriculumCache;
 }
 
@@ -73,11 +44,7 @@ export async function loadCurriculum(): Promise<CurriculumDay[]> {
  * @returns CurriculumIndex — Record<number, CurriculumDay>
  */
 export async function getCurriculumIndex(): Promise<CurriculumIndex> {
-  const curriculum = await loadCurriculum();
-  return curriculum.reduce<CurriculumIndex>((acc, day) => {
-    acc[day.day] = day;
-    return acc;
-  }, {});
+  return getIndexFromLoader();
 }
 
 /**
@@ -89,8 +56,8 @@ export async function getCurriculumIndex(): Promise<CurriculumIndex> {
 export async function getCurriculumDay(
   day: number
 ): Promise<CurriculumDay | undefined> {
-  const index = await getCurriculumIndex();
-  return index[day];
+  const result = await getDayFromLoader(day);
+  return result ?? undefined;
 }
 
 /**

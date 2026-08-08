@@ -7,7 +7,7 @@
  * Owner: Shared — Backend and AI members both consume this
  */
 
-import { z, ZodSchema } from "zod";
+import { z, type ZodSchema } from "zod";
 
 // ---------------------------------------------------------------------------
 // Result Types

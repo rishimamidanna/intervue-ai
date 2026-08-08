@@ -37,3 +37,10 @@ export interface CandidateProfile {
   missions: CandidateMission[];
   signals: CandidateSignals;
 }
+
+/**
+ * Top-level JSON container format for data/candidates.json.
+ */
+export interface CandidatesData {
+  candidates: CandidateProfile[];
+}
