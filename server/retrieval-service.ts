@@ -1,13 +1,13 @@
 /**
  * server/retrieval-service.ts
  *
- * Retrieval Architecture & Semantic Retrieval Engine (Milestone 6.1 & 6.2)
+ * Retrieval Architecture, Semantic Retrieval & BM25 Keyword Engine (Milestone 6.1, 6.2 & 6.3)
  *
  * Flow:
- * Query -> Query Embedding -> Vector Similarity Search -> Top-K Relevant Chunks
+ * Documents/Chunks -> Keyword Index -> BM25 Scoring -> Top-K Results
  *
  * Provides a clean, modular retrieval abstraction layer supporting pluggable
- * retrieval providers (Semantic Vector Retrieval, BM25 Keyword Retrieval, Hybrid Fusion Retrieval).
+ * retrieval providers (Semantic Vector Retrieval, BM25 Okapi Keyword Retrieval, Hybrid Fusion Retrieval).
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -34,6 +34,7 @@ import {
   VectorStorageService,
   defaultVectorStorageService,
 } from "./vector-storage-service";
+import { generateAllCurriculumChunks } from "./chunking-service";
 
 // ---------------------------------------------------------------------------
 // Math Utility: Cosine Similarity
@@ -70,6 +71,194 @@ export function calculateCosineSimilarity(
   if (normA === 0 || normB === 0) return 0;
   const similarity = dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   return Number(similarity.toFixed(6));
+}
+
+// ---------------------------------------------------------------------------
+// Tokenizer & BM25 Keyword Engine (Milestone 6.3)
+// ---------------------------------------------------------------------------
+
+const STOP_WORDS = new Set([
+  "a",
+  "about",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "from",
+  "has",
+  "he",
+  "in",
+  "is",
+  "it",
+  "its",
+  "of",
+  "on",
+  "or",
+  "that",
+  "the",
+  "to",
+  "was",
+  "were",
+  "will",
+  "with",
+]);
+
+/**
+ * Tokenizes, lowercases, and filters stop words from text content for lexical search.
+ *
+ * @param text - Raw text content
+ * @returns Filtered array of word tokens
+ */
+export function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, " ")
+    .split(/\s+/)
+    .filter((term) => term.length > 1 && !STOP_WORDS.has(term));
+}
+
+/**
+ * Production-ready BM25 Okapi Keyword Index & Relevance Scoring Engine.
+ */
+export class BM25Index {
+  private chunks: CurriculumChunk[] = [];
+  private docTermFreqs = new Map<string, Map<string, number>>();
+  private docLengths = new Map<string, number>();
+  private docCount = 0;
+  private avgDocLength = 0;
+  private docFreqs = new Map<string, number>();
+  private idfMap = new Map<string, number>();
+
+  private k1: number;
+  private b: number;
+
+  constructor(k1 = 1.5, b = 0.75) {
+    this.k1 = k1;
+    this.b = b;
+  }
+
+  /**
+   * Constructs inverted keyword index and precomputes IDF weights for chunk collection.
+   *
+   * @param chunks - Array of CurriculumChunk objects
+   */
+  buildIndex(chunks: CurriculumChunk[]): void {
+    this.chunks = chunks;
+    this.docCount = chunks.length;
+    this.docTermFreqs.clear();
+    this.docLengths.clear();
+    this.docFreqs.clear();
+    this.idfMap.clear();
+
+    let totalLength = 0;
+
+    for (const chunk of chunks) {
+      const contentTokens = tokenize(chunk.content);
+      const keywordTokens = chunk.keywords.flatMap((kw) => tokenize(kw));
+      // Keyword boost: duplicate topic keywords to elevate lexical match weight
+      const allTokens = [...contentTokens, ...keywordTokens, ...keywordTokens];
+
+      const len = allTokens.length;
+      this.docLengths.set(chunk.chunkId, len);
+      totalLength += len;
+
+      const tfMap = new Map<string, number>();
+      const uniqueTerms = new Set<string>();
+
+      for (const token of allTokens) {
+        tfMap.set(token, (tfMap.get(token) || 0) + 1);
+        uniqueTerms.add(token);
+      }
+
+      this.docTermFreqs.set(chunk.chunkId, tfMap);
+
+      for (const term of uniqueTerms) {
+        this.docFreqs.set(term, (this.docFreqs.get(term) || 0) + 1);
+      }
+    }
+
+    this.avgDocLength = this.docCount > 0 ? totalLength / this.docCount : 1;
+
+    // Compute Robertson-Spärck Jones IDF for each token
+    for (const [term, df] of this.docFreqs.entries()) {
+      const idf = Math.log(
+        (this.docCount - df + 0.5) / (df + 0.5) + 1.0
+      );
+      this.idfMap.set(term, Math.max(0, idf));
+    }
+  }
+
+  /**
+   * Searches the BM25 index using the Okapi BM25 relevance scoring formula.
+   *
+   * @param query - User search query
+   * @param options - Optional RetrievalOptions
+   * @returns Array of ranked RetrievedChunk objects
+   */
+  search(query: string, options?: RetrievalOptions): RetrievedChunk[] {
+    const queryTokens = tokenize(query);
+    if (queryTokens.length === 0 || this.chunks.length === 0) return [];
+
+    const topK = options?.topK || 5;
+    const minScore = options?.minScore ?? 0.0001;
+    const filter = options?.filter;
+
+    let candidateChunks = this.chunks;
+    if (filter) {
+      if (typeof filter.day === "number") {
+        candidateChunks = candidateChunks.filter(
+          (c) => c.metadata.sourceRef.day === filter.day
+        );
+      }
+      if (filter.category) {
+        candidateChunks = candidateChunks.filter(
+          (c) =>
+            c.metadata.category.toLowerCase() ===
+            filter.category!.toLowerCase()
+        );
+      }
+      if (filter.difficulty) {
+        candidateChunks = candidateChunks.filter(
+          (c) => c.metadata.difficulty === filter.difficulty
+        );
+      }
+    }
+
+    const scoredResults: RetrievedChunk[] = candidateChunks.map((chunk) => {
+      let score = 0;
+      const tfMap = this.docTermFreqs.get(chunk.chunkId);
+      const docLen = this.docLengths.get(chunk.chunkId) || this.avgDocLength;
+
+      for (const qToken of queryTokens) {
+        const tf = tfMap?.get(qToken) || 0;
+        if (tf === 0) continue;
+
+        const idf = this.idfMap.get(qToken) || 0;
+        const num = tf * (this.k1 + 1);
+        const denom =
+          tf + this.k1 * (1 - this.b + this.b * (docLen / this.avgDocLength));
+        score += idf * (num / denom);
+      }
+
+      return {
+        chunkId: chunk.chunkId,
+        content: chunk.content,
+        metadata: chunk.metadata,
+        score: Number(score.toFixed(6)),
+        retrievalSource: "bm25",
+      };
+    });
+
+    const filtered = scoredResults
+      .filter((r) => r.score >= minScore)
+      .sort((a, b) => b.score - a.score);
+
+    return filtered.slice(0, topK);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -193,46 +382,46 @@ export class SemanticRetrievalProvider implements IRetrievalProvider {
 }
 
 // ---------------------------------------------------------------------------
-// BM25 & Hybrid Architecture Stubs
+// BM25 Keyword Retrieval Provider (Milestone 6.3 Implementation)
 // ---------------------------------------------------------------------------
 
 /**
- * Mock BM25 Retrieval Provider.
- * Architecture stub ready for future BM25 keyword matching implementation.
+ * Real BM25 Keyword Retrieval Provider.
+ * Tokenizes chunk content, builds an inverted index, and calculates Okapi BM25 relevance scores.
  */
-export class MockBM25RetrievalProvider implements IRetrievalProvider {
-  name = "mock-bm25-retrieval-provider";
+export class BM25RetrievalProvider implements IRetrievalProvider {
+  name = "bm25-retrieval-provider";
   sourceType: RetrievalSource = "bm25";
 
+  private bm25Index = new BM25Index();
+  private isIndexed = false;
+
+  /**
+   * Ensures the curriculum chunks are tokenized and indexed into the BM25 engine.
+   */
+  private async ensureIndexed(): Promise<void> {
+    if (!this.isIndexed) {
+      const chunks = await generateAllCurriculumChunks();
+      this.bm25Index.buildIndex(chunks);
+      this.isIndexed = true;
+    }
+  }
+
+  /**
+   * Performs BM25 keyword retrieval for a given query string.
+   */
   async retrieve(
     query: string,
     options?: RetrievalOptions
   ): Promise<RetrievedChunk[]> {
-    const topK = options?.topK || 3;
-    const sampleMetadata: ChunkMetadata = {
-      keywords: ["bm25", "keywords", "lexical search"],
-      category: "RAG Foundations",
-      difficulty: "Intermediate",
-      sourceRef: {
-        file: "curriculum.json",
-        day: 2,
-        uri: "data/curriculum.json#day=2",
-      },
-    };
-
-    const mockResults: RetrievedChunk[] = [
-      {
-        chunkId: "chunk-day-02-concept-day-2-fixed-size-chunking",
-        content: `BM25 lexical match for query: "${query}". Keyword frequency and inverse document frequency scoring.`,
-        metadata: sampleMetadata,
-        score: 14.52,
-        retrievalSource: "bm25",
-      },
-    ];
-
-    return mockResults.slice(0, topK);
+    await this.ensureIndexed();
+    return this.bm25Index.search(query, options);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Hybrid Architecture Stub
+// ---------------------------------------------------------------------------
 
 /**
  * Mock Hybrid Retrieval Provider.
@@ -288,6 +477,7 @@ export class RetrievalService {
     const defaultProvider = provider || new SemanticRetrievalProvider();
     this.activeProvider = defaultProvider;
     this.registerProvider(defaultProvider);
+    this.registerProvider(new BM25RetrievalProvider());
   }
 
   /**
@@ -386,7 +576,49 @@ export async function performSemanticSearch(
 ): Promise<RetrievedChunk[] & RetrievalResponse> {
   const opts: RetrievalOptions =
     typeof options === "number" ? { topK: options } : options || {};
+
+  // Temporarily switch active provider if needed or use default (semantic)
+  const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
+  if (currentProviderInfo.sourceType !== "semantic") {
+    defaultRetrievalService.setProvider("semantic");
+  }
+
   const response = await defaultRetrievalService.retrieve(query, opts);
+
+  const resultsArray = [...response.results] as RetrievedChunk[] &
+    RetrievalResponse;
+  resultsArray.query = response.query;
+  resultsArray.results = response.results;
+  resultsArray.totalRetrieved = response.totalRetrieved;
+  resultsArray.durationMs = response.durationMs;
+  resultsArray.retrievalSource = response.retrievalSource;
+
+  return resultsArray;
+}
+
+/**
+ * Convenience helper executing BM25 Okapi keyword retrieval using defaultRetrievalService.
+ * Supports both RetrievalOptions object or direct topK number.
+ * Returns retrieved chunks array decorated with full RetrievalResponse metadata.
+ *
+ * @param query - User query string
+ * @param options - Optional RetrievalOptions object or numeric topK
+ * @returns Array of RetrievedChunk objects extended with RetrievalResponse metadata
+ */
+export async function performBM25Search(
+  query: string,
+  options?: RetrievalOptions | number
+): Promise<RetrievedChunk[] & RetrievalResponse> {
+  const opts: RetrievalOptions =
+    typeof options === "number" ? { topK: options } : options || {};
+
+  const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
+  defaultRetrievalService.setProvider("bm25");
+
+  const response = await defaultRetrievalService.retrieve(query, opts);
+
+  // Restore previous active provider
+  defaultRetrievalService.setProvider(currentProviderInfo.name);
 
   const resultsArray = [...response.results] as RetrievedChunk[] &
     RetrievalResponse;
