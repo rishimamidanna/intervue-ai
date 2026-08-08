@@ -985,3 +985,22 @@ export interface LightweightBenchmarkReport {
   averageLatency: string;
   overallScore: string;
 }
+
+// ---------------------------------------------------------------------------
+// RAG Pipeline Optimization Contracts (Milestone 7.37)
+// ---------------------------------------------------------------------------
+
+export interface RAGCacheStats {
+  hits: number;
+  misses: number;
+  size: number;
+}
+
+export interface OptimizedRAGResponse {
+  query: string;
+  context: string;
+  intent?: any;
+  retrievedChunks: RetrievedChunk[];
+  cached: boolean;
+  durationMs: number;
+}

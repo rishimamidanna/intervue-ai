@@ -846,3 +846,12 @@ export const LightweightBenchmarkReportSchema = z.object({
   averageLatency: z.string(),
   overallScore: z.string(),
 });
+
+export const OptimizedRAGResponseSchema = z.object({
+  query: z.string(),
+  context: z.string(),
+  intent: z.any().optional(),
+  retrievedChunks: z.array(RetrievedChunkSchema),
+  cached: z.boolean(),
+  durationMs: z.number(),
+});
