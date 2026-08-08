@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import type { Mesh, Points } from "three";
 
 export interface EnvironmentProps {
   /** Enable background depth particle field */
@@ -24,7 +26,7 @@ function pseudoRandom(seed: number): number {
 /**
  * Cinematic Environment component for INTERVUE AI.
  * Establishes a dark luxury environment with titanium metallic ground reflection,
- * frosted glass materials, atmospheric depth fog, and floating particle dust.
+ * frosted glass materials, atmospheric depth fog, and continuous floating particle dust.
  */
 export function Environment({
   enableParticles = true,
@@ -32,6 +34,10 @@ export function Environment({
   backgroundColor = "#050508",
   fogBounds = [4, 22],
 }: EnvironmentProps) {
+  const ringRef = useRef<Mesh>(null);
+  const glassRef = useRef<Mesh>(null);
+  const particlesRef = useRef<Points>(null);
+
   // Generate deterministic atmospheric dust particle positions
   const particlePositions = useMemo(() => {
     const positions = new Float32Array(particleCount * 3);
@@ -42,6 +48,25 @@ export function Environment({
     }
     return positions;
   }, [particleCount]);
+
+  // Continuous ambient background environment movement loop
+  useFrame((state, delta) => {
+    const time = state.clock.getElapsedTime();
+
+    if (ringRef.current) {
+      ringRef.current.rotation.z += 0.08 * delta;
+    }
+
+    if (glassRef.current) {
+      glassRef.current.position.y = Math.sin(time * 0.5) * 0.12;
+      glassRef.current.rotation.y = -Math.PI / 8 + Math.cos(time * 0.4) * 0.04;
+    }
+
+    if (particlesRef.current) {
+      particlesRef.current.rotation.y += 0.025 * delta;
+      particlesRef.current.position.y = Math.sin(time * 0.3) * 0.1;
+    }
+  });
 
   return (
     <group name="cinematic-environment">
@@ -65,19 +90,19 @@ export function Environment({
       </mesh>
 
       {/* Titanium Accent Ring (Demonstrates Metallic Finish) */}
-      <mesh position={[0, -1.95, -2]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={ringRef} position={[0, -1.95, -2]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[2.8, 3.0, 64]} />
         <meshStandardMaterial
           color="#1e1b4b"
           emissive="#7c3aed"
-          emissiveIntensity={0.2}
+          emissiveIntensity={0.25}
           roughness={0.1}
           metalness={0.9}
         />
       </mesh>
 
       {/* Sample Glass Panel (Demonstrates Frosted Glass Material) */}
-      <mesh position={[2, 0, -2]} rotation={[0, -Math.PI / 8, 0]} castShadow>
+      <mesh ref={glassRef} position={[2, 0, -2]} rotation={[0, -Math.PI / 8, 0]} castShadow>
         <boxGeometry args={[1.6, 2.4, 0.08]} />
         <meshPhysicalMaterial
           color="#10121e"
@@ -94,7 +119,7 @@ export function Environment({
 
       {/* Atmospheric Particle Dust Field */}
       {enableParticles && (
-        <points>
+        <points ref={particlesRef}>
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"

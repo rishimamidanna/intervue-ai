@@ -7,7 +7,7 @@ import { Camera, type CameraProps } from "./Camera";
 export interface SceneProps {
   /** Optional 3D elements, lights, or meshes to render inside the scene */
   children?: ReactNode;
-  /** Custom perspective camera settings */
+  /** Custom perspective camera settings (only rendered if explicitly provided) */
   cameraProps?: CameraProps;
   /** Custom wrapper CSS class names for responsive sizing */
   className?: string;
@@ -32,7 +32,6 @@ function getServerSnapshot() {
 
 /**
  * React 19 hook to safely determine client-side mounting without setState in useEffect.
- * Invokes subscribe listener on client mount to trigger transition from server snapshot (false) to client snapshot (true).
  */
 function useIsMounted() {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
@@ -68,7 +67,7 @@ export function Scene({
         }}
         style={{ width: "100%", height: "100%" }}
       >
-        <Camera {...cameraProps} />
+        {cameraProps && <Camera {...cameraProps} />}
         {children}
       </Canvas>
     </div>

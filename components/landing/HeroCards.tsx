@@ -55,9 +55,9 @@ export function HeroCards() {
       {cardsData.map((card, idx) => (
         <motion.div
           key={card.title}
-          initial={{ opacity: 0, x: 30 }}
+          initial={{ opacity: 0, x: 25 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 + idx * 0.1, ease: "easeOut" }}
+          transition={{ duration: 0.7, delay: 1.5 + idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
           className="p-4 rounded-2xl bg-[#0e0f17]/70 backdrop-blur-xl border border-white/10 hover:border-violet-500/30 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.4)] group"
         >
           <div className="flex items-start justify-between gap-3 mb-1.5">

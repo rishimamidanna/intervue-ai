@@ -11,7 +11,7 @@ export interface FloatingObjectProps {
   position?: Vector3Tuple;
   /** Initial rotation [x, y, z] in radians */
   rotation?: Vector3Tuple;
-  /** Float frequency speed (lower = slower, more cinematic breathing) */
+  /** Float frequency speed */
   floatSpeed?: number;
   /** Float amplitude height range */
   floatAmplitude?: number;
@@ -23,16 +23,15 @@ export interface FloatingObjectProps {
 
 /**
  * Reusable FloatingObject component for INTERVUE AI.
- * Implements frame-based smooth interpolation (`useFrame`) to apply slow, cinematic floating motion
- * and continuous subtle rotation to any nested 3D mesh or object group.
+ * Configured with subtle, slow cinematic motion parameters.
  */
 export function FloatingObject({
   children,
   position = [0, 0, 0],
   rotation = [0, 0, 0],
-  floatSpeed = 0.8,
-  floatAmplitude = 0.15,
-  rotationSpeed = [0.1, 0.15, 0.05],
+  floatSpeed = 0.6,
+  floatAmplitude = 0.12,
+  rotationSpeed = [0.08, 0.15, 0.05],
   floatOffset = 0,
 }: FloatingObjectProps) {
   const groupRef = useRef<Group>(null);
@@ -42,18 +41,18 @@ export function FloatingObject({
 
     const elapsedTime = state.clock.getElapsedTime() + floatOffset;
 
-    // Smooth sinusoidal floating motion on Y-axis
+    // Smooth subtle vertical float
     const floatY = Math.sin(elapsedTime * floatSpeed) * floatAmplitude;
     groupRef.current.position.y = position[1] + floatY;
 
-    // Subtle organic drift on X-axis (harmonic at half frequency)
-    const floatX = Math.cos(elapsedTime * (floatSpeed * 0.5)) * (floatAmplitude * 0.3);
+    // Subtle horizontal X-axis drift
+    const floatX = Math.cos(elapsedTime * (floatSpeed * 0.5)) * (floatAmplitude * 0.4);
     groupRef.current.position.x = position[0] + floatX;
 
-    // Continuous smooth rotation per axis
-    groupRef.current.rotation.x += rotationSpeed[0] * delta;
+    // Organic slow rotation per axis
+    groupRef.current.rotation.x = rotation[0] + Math.sin(elapsedTime * floatSpeed * 0.4) * 0.08;
     groupRef.current.rotation.y += rotationSpeed[1] * delta;
-    groupRef.current.rotation.z += rotationSpeed[2] * delta;
+    groupRef.current.rotation.z = rotation[2] + Math.cos(elapsedTime * floatSpeed * 0.3) * 0.06;
   });
 
   return (
@@ -68,7 +67,7 @@ export function FloatingObject({
       ) : (
         /* Default titanium glass geometric crystal fallback */
         <mesh castShadow receiveShadow>
-          <octahedronGeometry args={[0.8, 0]} />
+          <octahedronGeometry args={[0.9, 0]} />
           <meshPhysicalMaterial
             color="#10121e"
             roughness={0.15}
@@ -76,7 +75,7 @@ export function FloatingObject({
             transmission={0.4}
             thickness={0.5}
             emissive="#7c3aed"
-            emissiveIntensity={0.2}
+            emissiveIntensity={0.6}
           />
         </mesh>
       )}

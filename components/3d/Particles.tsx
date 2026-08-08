@@ -2,7 +2,7 @@
 
 import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AdditiveBlending, type Points } from "three";
+import { AdditiveBlending, type Points, MathUtils, type PointsMaterial } from "three";
 
 export interface ParticlesProps {
   /** Total particle count for the atmospheric dust field */
@@ -27,17 +27,17 @@ function pseudoRandom(seed: number): number {
 
 /**
  * Atmospheric Particle System for INTERVUE AI.
- * Renders glowing atmospheric 3D dust points using a single-draw-call buffer geometry,
- * additive color blending, size attenuation depth effects, and GPU-accelerated frame motion.
+ * Handles timed entrance sequence (0.0s - 0.5s) for smooth background environment fade in.
  */
 export function Particles({
-  count = 300,
+  count = 400,
   color = "#a78bfa",
   size = 0.06,
-  bounds = [24, 16, 20],
+  bounds = [22, 14, 18],
   speed = 0.03,
 }: ParticlesProps) {
   const pointsRef = useRef<Points>(null);
+  const matRef = useRef<PointsMaterial>(null);
 
   // Generate deterministic particle positions once using useMemo
   const positions = useMemo(() => {
@@ -53,17 +53,26 @@ export function Particles({
     return pos;
   }, [count, bounds]);
 
-  // GPU-accelerated frame animation: slow, smooth rotation and breathing drift
   useFrame((state, delta) => {
     if (!pointsRef.current) return;
 
-    // Slow atmospheric rotation
-    pointsRef.current.rotation.y += speed * delta;
-    pointsRef.current.rotation.x += speed * 0.5 * delta;
-
-    // Subtle sinusoidal wave drift for organic depth floating
     const elapsedTime = state.clock.getElapsedTime();
+
+    // 0 - 0.5s Entrance Fade In
+    const entranceProgress = MathUtils.clamp(elapsedTime / 0.5, 0, 1);
+    const targetOpacity = 0.65 * entranceProgress;
+
+    if (matRef.current) {
+      matRef.current.opacity = targetOpacity;
+    }
+
+    pointsRef.current.rotation.y += speed * delta;
+    pointsRef.current.rotation.x += speed * 0.3 * delta;
+    pointsRef.current.rotation.z += speed * 0.2 * delta;
+
+    // Slow, subtle 3D wave drift
     pointsRef.current.position.y = Math.sin(elapsedTime * 0.4) * 0.15;
+    pointsRef.current.position.z = Math.cos(elapsedTime * 0.3) * 0.1;
   });
 
   return (
@@ -75,10 +84,11 @@ export function Particles({
         />
       </bufferGeometry>
       <pointsMaterial
+        ref={matRef}
         size={size}
         color={color}
         transparent
-        opacity={0.55}
+        opacity={0}
         sizeAttenuation
         blending={AdditiveBlending}
         depthWrite={false}

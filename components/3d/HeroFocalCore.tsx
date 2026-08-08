@@ -2,45 +2,56 @@
 
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import type { Group } from "three";
+import type { Group, MeshStandardMaterial } from "three";
 import { FloatingObject } from "./FloatingObject";
 
 /**
  * HeroFocalCore component for INTERVUE AI.
- * Renders an advanced 3D AI intelligence core surrounded by metallic orbital rings
- * and glowing concept nodes to serve as the visual focal point in the hero scene.
+ * Premium slow cinematic motion for luxury AI aesthetic.
  */
 export function HeroFocalCore() {
   const coreRef = useRef<Group>(null);
   const ring1Ref = useRef<Group>(null);
   const ring2Ref = useRef<Group>(null);
+  const innerMatRef = useRef<MeshStandardMaterial>(null);
 
   useFrame((state, delta) => {
+    const time = state.clock.getElapsedTime();
+
     if (coreRef.current) {
-      coreRef.current.rotation.y += 0.25 * delta;
+      // Slow, elegant rotation for central core
+      coreRef.current.rotation.y += 0.15 * delta;
+      coreRef.current.rotation.x = Math.sin(time * 0.4) * 0.08;
+    }
+    if (innerMatRef.current) {
+      // Gentle, subtle breathing emissive pulse
+      innerMatRef.current.emissiveIntensity = 1.2 + Math.sin(time * 0.8) * 0.4;
     }
     if (ring1Ref.current) {
-      ring1Ref.current.rotation.z += 0.18 * delta;
-      ring1Ref.current.rotation.x += 0.12 * delta;
+      // Slow holographic precession for primary orbital ring
+      ring1Ref.current.rotation.z += 0.12 * delta;
+      ring1Ref.current.rotation.x += 0.08 * delta;
     }
     if (ring2Ref.current) {
-      ring2Ref.current.rotation.z -= 0.22 * delta;
-      ring2Ref.current.rotation.y -= 0.14 * delta;
+      // Counter-rotating cyan orbital accent ring
+      ring2Ref.current.rotation.z -= 0.1 * delta;
+      ring2Ref.current.rotation.y -= 0.07 * delta;
     }
   });
 
   return (
     <group name="hero-focal-core" position={[0, 0.2, -0.5]}>
-      {/* Floating Central Core Sphere */}
-      <FloatingObject floatSpeed={0.9} floatAmplitude={0.15}>
+      {/* Floating Central Core Sphere with subtle floating motion */}
+      <FloatingObject floatSpeed={0.6} floatAmplitude={0.12} rotationSpeed={[0.08, 0.15, 0.05]}>
         <group ref={coreRef}>
           {/* Inner Glowing Core */}
           <mesh>
             <icosahedronGeometry args={[0.95, 2]} />
             <meshStandardMaterial
+              ref={innerMatRef}
               color="#1e1b4b"
               emissive="#7c3aed"
-              emissiveIntensity={1.5}
+              emissiveIntensity={1.4}
               roughness={0.15}
               metalness={0.85}
             />
@@ -53,9 +64,9 @@ export function HeroFocalCore() {
               color="#38bdf8"
               wireframe
               transparent
-              opacity={0.45}
+              opacity={0.65}
               emissive="#38bdf8"
-              emissiveIntensity={0.6}
+              emissiveIntensity={0.8}
             />
           </mesh>
         </group>
@@ -68,7 +79,7 @@ export function HeroFocalCore() {
           <meshStandardMaterial
             color="#1e1b4b"
             emissive="#8b5cf6"
-            emissiveIntensity={0.7}
+            emissiveIntensity={0.9}
             metalness={0.95}
             roughness={0.1}
           />
@@ -82,7 +93,7 @@ export function HeroFocalCore() {
           <meshStandardMaterial
             color="#0f172a"
             emissive="#38bdf8"
-            emissiveIntensity={0.9}
+            emissiveIntensity={1.1}
             metalness={0.95}
             roughness={0.1}
           />

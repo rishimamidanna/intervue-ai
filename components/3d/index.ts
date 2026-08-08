@@ -19,3 +19,7 @@ export { Particles } from "./Particles";
 export type { ParticlesProps } from "./Particles";
 
 export { HeroFocalCore } from "./HeroFocalCore";
+
+export { AIIntelligenceCore } from "./AIIntelligenceCore";
+export { HolographicNode } from "./HolographicNode";
+export { NeuralNetwork } from "./NeuralNetwork";

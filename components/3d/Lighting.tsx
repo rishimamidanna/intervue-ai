@@ -1,5 +1,9 @@
 "use client";
 
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import type { PointLight } from "three";
+
 export interface LightingProps {
   /** Main directional key light intensity */
   keyLightIntensity?: number;
@@ -9,19 +13,40 @@ export interface LightingProps {
   blueGlowIntensity?: number;
   /** Ambient light intensity */
   ambientIntensity?: number;
+  /** Enable dynamic light pulsing animation */
+  enablePulse?: boolean;
 }
 
 /**
  * Cinematic Lighting component for INTERVUE AI.
- * Configures soft key directional light with shadow mapping, ambient background fill,
- * cool blue rim light, and signature purple/blue AI glow point lights.
+ * Smooth, subtle glow pulse for a luxury AI aesthetic.
  */
 export function Lighting({
-  keyLightIntensity = 1.2,
-  purpleGlowIntensity = 2.5,
-  blueGlowIntensity = 1.5,
+  keyLightIntensity = 1.8,
+  purpleGlowIntensity = 3.2,
+  blueGlowIntensity = 2.0,
   ambientIntensity = 0.4,
+  enablePulse = true,
 }: LightingProps) {
+  const purpleLightRef = useRef<PointLight>(null);
+  const blueLightRef = useRef<PointLight>(null);
+
+  useFrame((state) => {
+    if (!enablePulse) return;
+    const time = state.clock.getElapsedTime();
+
+    if (purpleLightRef.current) {
+      // Subtle, slow breathing purple glow pulse
+      purpleLightRef.current.intensity =
+        purpleGlowIntensity + Math.sin(time * 0.8) * 0.4;
+    }
+    if (blueLightRef.current) {
+      // Subtle, slow breathing cyan glow pulse out-of-phase
+      blueLightRef.current.intensity =
+        blueGlowIntensity + Math.cos(time * 0.6) * 0.3;
+    }
+  });
+
   return (
     <group name="cinematic-lighting">
       {/* Soft Low-Intensity Ambient Fill */}
@@ -49,6 +74,7 @@ export function Lighting({
 
       {/* Signature Purple AI Glow Point Light */}
       <pointLight
+        ref={purpleLightRef}
         position={[0, 1, 2]}
         intensity={purpleGlowIntensity}
         color="#7c3aed"
@@ -58,6 +84,7 @@ export function Lighting({
 
       {/* Secondary Cyan/Blue AI Glow Accent Light */}
       <pointLight
+        ref={blueLightRef}
         position={[-2, -1, 1]}
         intensity={blueGlowIntensity}
         color="#38bdf8"
