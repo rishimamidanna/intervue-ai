@@ -178,6 +178,20 @@
         "attempts": 1,
         "timestamp": "2026-08-08T09:08:48.118Z",
         "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:10:46.399Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:10:46.400Z",
+        "notes": "Strong grasp of dense vector representations"
       }
     ]
   },
@@ -192,6 +206,15 @@
     "id": "non-existent-candidate-id-999",
     "previousQuestions": [],
     "weakAreas": [],
+    "strengths": [],
+    "performance": []
+  },
+  {
+    "id": "candidate-gap-123",
+    "previousQuestions": [],
+    "weakAreas": [
+      "Cosine Similarity"
+    ],
     "strengths": [],
     "performance": []
   }

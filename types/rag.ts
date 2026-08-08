@@ -804,6 +804,23 @@ export interface DifficultyDecision {
   reasoning: string;
 }
 
+// ---------------------------------------------------------------------------
+// Knowledge Gap Detection Contracts (Milestone 7.19)
+// ---------------------------------------------------------------------------
+
+export interface KnowledgeGap {
+  skill: string;
+  gap: string;
+  severity: "low" | "medium" | "high" | "none";
+  recommendation: string;
+}
+
+export interface KnowledgeGapResponse {
+  candidateId: string;
+  gapsDetected: KnowledgeGap[];
+}
+
+
 
 
 

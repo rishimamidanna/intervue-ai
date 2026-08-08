@@ -712,6 +712,23 @@ export const DifficultyDecisionSchema = z.object({
   reasoning: z.string().min(1, "reasoning is required"),
 });
 
+// ---------------------------------------------------------------------------
+// Knowledge Gap Detection Schemas (Milestone 7.19)
+// ---------------------------------------------------------------------------
+
+export const KnowledgeGapSchema = z.object({
+  skill: z.string().min(1, "skill is required"),
+  gap: z.string().min(1, "gap is required"),
+  severity: z.enum(["low", "medium", "high", "none"]),
+  recommendation: z.string().min(1, "recommendation is required"),
+});
+
+export const KnowledgeGapResponseSchema = z.object({
+  candidateId: z.string().min(1, "candidateId is required"),
+  gapsDetected: z.array(KnowledgeGapSchema),
+});
+
+
 
 
 
