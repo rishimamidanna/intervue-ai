@@ -1,13 +1,13 @@
 /**
  * server/retrieval-service.ts
  *
- * Retrieval Architecture, Semantic Retrieval & BM25 Keyword Engine (Milestone 6.1, 6.2 & 6.3)
+ * Retrieval Architecture, Semantic, BM25 Keyword, Hybrid Fusion & Candidate-Aware Ranking Engine (Milestones 6.1 - 6.5)
  *
  * Flow:
- * Documents/Chunks -> Keyword Index -> BM25 Scoring -> Top-K Results
+ * Query + Candidate Profile -> Parallel (Semantic + BM25) -> Score Fusion -> Candidate Relevance Scoring -> Top-K Personalized Results
  *
  * Provides a clean, modular retrieval abstraction layer supporting pluggable
- * retrieval providers (Semantic Vector Retrieval, BM25 Okapi Keyword Retrieval, Hybrid Fusion Retrieval).
+ * retrieval providers (Semantic Vector Retrieval, BM25 Okapi Keyword Retrieval, Hybrid Fusion Retrieval, Candidate-Aware Retrieval).
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -19,10 +19,15 @@ import type {
   RetrievalSource,
   ChunkMetadata,
   CurriculumChunk,
+  HybridConfig,
+  CandidateAwareConfig,
+  CandidateAwareRetrievedChunk,
 } from "@/types/rag";
+import type { CandidateProfile, CandidateIntelligenceProfile } from "@/types/candidate";
 import {
   RetrievalResponseSchema,
   RetrievedChunkSchema,
+  CandidateAwareRetrievedChunkSchema,
 } from "@/schemas/rag.schema";
 import { strictValidate } from "@/lib/validation";
 import {
@@ -250,6 +255,7 @@ export class BM25Index {
         metadata: chunk.metadata,
         score: Number(score.toFixed(6)),
         retrievalSource: "bm25",
+        sources: ["bm25"],
       };
     });
 
@@ -370,6 +376,7 @@ export class SemanticRetrievalProvider implements IRetrievalProvider {
         metadata: record.metadata,
         score,
         retrievalSource: "semantic",
+        sources: ["semantic"],
       };
     });
 
@@ -420,44 +427,386 @@ export class BM25RetrievalProvider implements IRetrievalProvider {
 }
 
 // ---------------------------------------------------------------------------
-// Hybrid Architecture Stub
+// Score Normalization Helper for Hybrid Fusion
 // ---------------------------------------------------------------------------
 
 /**
- * Mock Hybrid Retrieval Provider.
- * Architecture stub ready for future reciprocal rank fusion (RRF) hybrid implementation.
+ * Normalizes scores in a candidate set to range [0.0, 1.0] using Min-Max normalization.
+ *
+ * @param results - Array of RetrievedChunk items
+ * @returns Map of chunkId -> normalized float score
  */
-export class MockHybridRetrievalProvider implements IRetrievalProvider {
-  name = "mock-hybrid-retrieval-provider";
+export function normalizeScores(results: RetrievedChunk[]): Map<string, number> {
+  const normMap = new Map<string, number>();
+  if (results.length === 0) return normMap;
+
+  let minScore = Infinity;
+  let maxScore = -Infinity;
+
+  for (const item of results) {
+    if (item.score < minScore) minScore = item.score;
+    if (item.score > maxScore) maxScore = item.score;
+  }
+
+  const range = maxScore - minScore;
+
+  for (const item of results) {
+    const norm = range > 0 ? (item.score - minScore) / range : 1.0;
+    normMap.set(item.chunkId, Number(norm.toFixed(6)));
+  }
+
+  return normMap;
+}
+
+// ---------------------------------------------------------------------------
+// Hybrid Retrieval Fusion Provider (Milestone 6.4 Implementation)
+// ---------------------------------------------------------------------------
+
+/**
+ * Production-ready Hybrid Retrieval Fusion Provider.
+ * Executes Semantic Retrieval and BM25 Keyword Retrieval in parallel,
+ * performs Min-Max score normalization, combines scores using configurable weights
+ * (Default: Semantic 0.7, BM25 0.3), deduplicates chunks, and returns Top-K ranked results.
+ */
+export class HybridRetrievalProvider implements IRetrievalProvider {
+  name = "hybrid-retrieval-provider";
   sourceType: RetrievalSource = "hybrid";
 
+  private semanticProvider: SemanticRetrievalProvider;
+  private bm25Provider: BM25RetrievalProvider;
+  private defaultConfig: HybridConfig;
+
+  constructor(
+    semanticProvider?: SemanticRetrievalProvider,
+    bm25Provider?: BM25RetrievalProvider,
+    config?: HybridConfig
+  ) {
+    this.semanticProvider =
+      semanticProvider || new SemanticRetrievalProvider();
+    this.bm25Provider = bm25Provider || new BM25RetrievalProvider();
+    this.defaultConfig = config || {
+      semanticWeight: 0.7,
+      bm25Weight: 0.3,
+      fetchTopK: 20,
+    };
+  }
+
+  /**
+   * Executes hybrid score fusion retrieval for a query string.
+   */
   async retrieve(
     query: string,
     options?: RetrievalOptions
   ): Promise<RetrievedChunk[]> {
-    const topK = options?.topK || 3;
-    const sampleMetadata: ChunkMetadata = {
-      keywords: ["hybrid search", "rrf", "fused retrieval"],
-      category: "RAG Foundations",
-      difficulty: "Advanced",
-      sourceRef: {
-        file: "curriculum.json",
-        day: 3,
-        uri: "data/curriculum.json#day=3",
-      },
+    const topK = options?.topK || 5;
+    const minScore = options?.minScore ?? 0.0;
+
+    const semanticWeight =
+      options?.hybridConfig?.semanticWeight ?? this.defaultConfig.semanticWeight;
+    const bm25Weight =
+      options?.hybridConfig?.bm25Weight ?? this.defaultConfig.bm25Weight;
+    const fetchTopK =
+      options?.hybridConfig?.fetchTopK ?? this.defaultConfig.fetchTopK ?? 20;
+
+    const childOptions: RetrievalOptions = {
+      topK: fetchTopK,
+      filter: options?.filter,
     };
 
-    const mockResults: RetrievedChunk[] = [
-      {
-        chunkId: "chunk-day-03-concept-day-3-hybrid-search",
-        content: `Hybrid fused match for query: "${query}". Fusing vector similarity with BM25 keyword ranks.`,
-        metadata: sampleMetadata,
-        score: 0.98,
-        retrievalSource: "hybrid",
-      },
-    ];
+    // 1. Parallel Collection from Semantic and BM25 Providers
+    const [semanticResults, bm25Results] = await Promise.all([
+      this.semanticProvider.retrieve(query, childOptions),
+      this.bm25Provider.retrieve(query, childOptions),
+    ]);
 
-    return mockResults.slice(0, topK);
+    // 2. Min-Max Score Normalization
+    const semanticNormMap = normalizeScores(semanticResults);
+    const bm25NormMap = normalizeScores(bm25Results);
+
+    // 3. Candidate Fusion, Deduplication, and Weighted Score Combination
+    const candidateMap = new Map<
+      string,
+      {
+        chunkId: string;
+        content: string;
+        metadata: ChunkMetadata;
+        sources: Set<RetrievalSource>;
+      }
+    >();
+
+    // Merge semantic candidates
+    for (const item of semanticResults) {
+      if (!candidateMap.has(item.chunkId)) {
+        candidateMap.set(item.chunkId, {
+          chunkId: item.chunkId,
+          content: item.content,
+          metadata: item.metadata,
+          sources: new Set(["semantic"]),
+        });
+      } else {
+        candidateMap.get(item.chunkId)!.sources.add("semantic");
+      }
+    }
+
+    // Merge BM25 candidates
+    for (const item of bm25Results) {
+      if (!candidateMap.has(item.chunkId)) {
+        candidateMap.set(item.chunkId, {
+          chunkId: item.chunkId,
+          content: item.content,
+          metadata: item.metadata,
+          sources: new Set(["bm25"]),
+        });
+      } else {
+        candidateMap.get(item.chunkId)!.sources.add("bm25");
+      }
+    }
+
+    // 4. Calculate Final Weighted Hybrid Score & Format Output
+    const fusedResults: RetrievedChunk[] = Array.from(candidateMap.values()).map(
+      (candidate) => {
+        const normSem = semanticNormMap.get(candidate.chunkId) || 0;
+        const normBM25 = bm25NormMap.get(candidate.chunkId) || 0;
+
+        const finalScore = Number(
+          (semanticWeight * normSem + bm25Weight * normBM25).toFixed(6)
+        );
+
+        return {
+          chunkId: candidate.chunkId,
+          content: candidate.content,
+          metadata: candidate.metadata,
+          score: finalScore,
+          retrievalSource: "hybrid",
+          sources: Array.from(candidate.sources),
+        };
+      }
+    );
+
+    // 5. Filter & Final Ranking
+    const rankedResults = fusedResults
+      .filter((r) => r.score >= minScore)
+      .sort((a, b) => b.score - a.score);
+
+    return rankedResults.slice(0, topK);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Candidate Relevance Scoring Engine (Milestone 6.5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculates candidate relevance score [0.0, 1.0] for a curriculum chunk based on candidate profile.
+ * Evaluates weak areas (verification areas/failed or skipped missions/weakTopics), experience level, and past attempts.
+ *
+ * @param chunk - RetrievedChunk candidate item
+ * @param profile - CandidateProfile, CandidateIntelligenceProfile, or generic candidate object
+ * @returns Normalized candidate relevance float score in range [0.0, 1.0]
+ */
+export function calculateCandidateRelevanceScore(
+  chunk: RetrievedChunk,
+  profile?: CandidateProfile | CandidateIntelligenceProfile | Record<string, unknown>
+): number {
+  if (!profile) return 0.5; // neutral baseline score when no profile is available
+
+  let score = 0.5; // baseline neutral score
+
+  const chunkDay = chunk.metadata.sourceRef?.day;
+  const chunkCategory = chunk.metadata.category?.toLowerCase() || "";
+  const chunkTopic = (chunk.metadata.topic || "").toString().toLowerCase();
+  const chunkConcept = (chunk.metadata.concept || "").toString().toLowerCase();
+  const chunkContent = (chunk.content || "").toLowerCase();
+  const chunkDifficulty = chunk.metadata.difficulty;
+  const chunkKeywords = (chunk.metadata.keywords || []).map((k) => k.toLowerCase());
+
+  const rawProfile = profile as Record<string, unknown>;
+  const intelProfile = profile as CandidateIntelligenceProfile;
+  const standardProfile = profile as CandidateProfile;
+
+  let isWeakArea = false;
+  let hasHighAttempts = false;
+  let isSkippedTopic = false;
+
+  // 1. Check weakAreas / previousWeakTopics arrays on rawProfile (e.g., sample candidate Rahul)
+  const weakAreasList: string[] = [];
+  if (Array.isArray(rawProfile.weakAreas)) {
+    weakAreasList.push(...rawProfile.weakAreas.map((w) => String(w).toLowerCase()));
+  }
+  if (Array.isArray(rawProfile.previousWeakTopics)) {
+    weakAreasList.push(...rawProfile.previousWeakTopics.map((w) => String(w).toLowerCase()));
+  }
+
+  if (weakAreasList.length > 0) {
+    for (const wTopic of weakAreasList) {
+      if (
+        chunkCategory.includes(wTopic) ||
+        chunkTopic.includes(wTopic) ||
+        chunkConcept.includes(wTopic) ||
+        chunkContent.includes(wTopic) ||
+        chunkKeywords.some((k) => k.includes(wTopic) || wTopic.includes(k)) ||
+        wTopic.split(/\s+/).some((term) => term.length > 3 && (chunkCategory.includes(term) || chunkKeywords.some(k => k.includes(term))))
+      ) {
+        isWeakArea = true;
+        break;
+      }
+    }
+  }
+
+  // 2. Check Verification Areas & Recommended Focus from Candidate Intelligence Profile
+  if (!isWeakArea && intelProfile.verificationAreas && Array.isArray(intelProfile.verificationAreas)) {
+    for (const vArea of intelProfile.verificationAreas) {
+      if (
+        (vArea.day && vArea.day === chunkDay) ||
+        (vArea.topic && chunkKeywords.some((k) => k.includes(vArea.topic.toLowerCase()))) ||
+        (vArea.topic && chunkCategory.includes(vArea.topic.toLowerCase()))
+      ) {
+        isWeakArea = true;
+        break;
+      }
+    }
+  }
+
+  if (!isWeakArea && intelProfile.recommendedFocus && Array.isArray(intelProfile.recommendedFocus)) {
+    for (const focus of intelProfile.recommendedFocus) {
+      if (
+        (focus.day && focus.day === chunkDay) ||
+        (focus.topic && chunkKeywords.some((k) => k.includes(focus.topic.toLowerCase())))
+      ) {
+        isWeakArea = true;
+        break;
+      }
+    }
+  }
+
+  // 3. Check Candidate Mission Performance & Signals from Candidate Profile
+  if (standardProfile.missions && Array.isArray(standardProfile.missions)) {
+    for (const m of standardProfile.missions) {
+      if (m.day === chunkDay) {
+        if (m.passed === false && !m.skipped) isWeakArea = true;
+        if (m.skipped) isSkippedTopic = true;
+        if (m.attempts && m.attempts > 1) hasHighAttempts = true;
+      }
+    }
+  }
+
+  if (isWeakArea) score += 0.35;
+  else if (isSkippedTopic) score += 0.25;
+  else if (hasHighAttempts) score += 0.20;
+
+  // 4. Experience Level & Concept Difficulty Alignment
+  let experienceYears =
+    intelProfile.experience ?? standardProfile.experience ?? standardProfile.member?.yearsExperience;
+
+  if (experienceYears === undefined && typeof rawProfile.experienceLevel === "string") {
+    const lvl = rawProfile.experienceLevel.toLowerCase();
+    if (lvl.includes("begin")) experienceYears = 1;
+    else if (lvl.includes("mid") || lvl.includes("inter")) experienceYears = 4;
+    else if (lvl.includes("sen") || lvl.includes("adv")) experienceYears = 7;
+  }
+
+  if (experienceYears === undefined) experienceYears = 3;
+
+  if (experienceYears <= 2) {
+    // Entry level candidate: boost Beginner & Intermediate chunks
+    if (chunkDifficulty === "Beginner") score += 0.15;
+    else if (chunkDifficulty === "Intermediate") score += 0.08;
+    else if (chunkDifficulty === "Advanced") score += 0.02;
+  } else if (experienceYears <= 5) {
+    // Mid level candidate: boost Intermediate & Advanced chunks
+    if (chunkDifficulty === "Intermediate") score += 0.15;
+    else if (chunkDifficulty === "Advanced") score += 0.12;
+    else if (chunkDifficulty === "Beginner") score += 0.08;
+  } else {
+    // Senior candidate: boost Advanced & Intermediate chunks
+    if (chunkDifficulty === "Advanced") score += 0.15;
+    else if (chunkDifficulty === "Intermediate") score += 0.12;
+    else if (chunkDifficulty === "Beginner") score += 0.05;
+  }
+
+  return Number(Math.min(1.0, Math.max(0.0, score)).toFixed(6));
+}
+
+// ---------------------------------------------------------------------------
+// Candidate-Aware Retrieval Provider (Milestone 6.5 Implementation)
+// ---------------------------------------------------------------------------
+
+/**
+ * Production-ready Candidate-Aware Retrieval Provider.
+ * Personalizes retrieval results by fusing Hybrid Retrieval Scores with Candidate Relevance Scores.
+ * Formula: FinalScore = (0.7 * HybridScore) + (0.3 * CandidateScore)
+ */
+export class CandidateAwareRetrievalProvider implements IRetrievalProvider {
+  name = "candidate-aware-retrieval-provider";
+  sourceType: RetrievalSource = "candidate-aware";
+
+  private hybridProvider: HybridRetrievalProvider;
+  private defaultConfig: CandidateAwareConfig;
+
+  constructor(
+    hybridProvider?: HybridRetrievalProvider,
+    config?: CandidateAwareConfig
+  ) {
+    this.hybridProvider = hybridProvider || new HybridRetrievalProvider();
+    this.defaultConfig = config || {
+      hybridWeight: 0.7,
+      candidateWeight: 0.3,
+    };
+  }
+
+  /**
+   * Executes candidate-aware personalized retrieval.
+   */
+  async retrieve(
+    query: string,
+    options?: RetrievalOptions
+  ): Promise<CandidateAwareRetrievedChunk[]> {
+    const topK = options?.topK || 5;
+    const minScore = options?.minScore ?? 0.0;
+    const profile = options?.candidateProfile;
+
+    const hybridWeight =
+      options?.candidateAwareConfig?.hybridWeight ?? this.defaultConfig.hybridWeight;
+    const candidateWeight =
+      options?.candidateAwareConfig?.candidateWeight ?? this.defaultConfig.candidateWeight;
+
+    // 1. Fetch Top candidates from Hybrid Retrieval Provider
+    const hybridResults = await this.hybridProvider.retrieve(query, {
+      topK: topK * 4,
+      filter: options?.filter,
+      hybridConfig: options?.hybridConfig,
+    });
+
+    // 2. Score Candidate Relevance & Calculate Weighted Final Score
+    const personalizedResults: CandidateAwareRetrievedChunk[] = hybridResults.map(
+      (item) => {
+        const hybridScore = item.score; // normalized hybrid score [0.0, 1.0]
+        const candidateScore = calculateCandidateRelevanceScore(item, profile);
+
+        const finalScore = Number(
+          (hybridWeight * hybridScore + candidateWeight * candidateScore).toFixed(6)
+        );
+
+        return {
+          chunkId: item.chunkId,
+          content: item.content,
+          metadata: item.metadata,
+          hybridScore,
+          candidateScore,
+          finalScore,
+          score: finalScore,
+          retrievalSource: "candidate-aware",
+          sources: item.sources || ["hybrid"],
+        };
+      }
+    );
+
+    // 3. Final Ranking by finalScore descending
+    const ranked = personalizedResults
+      .filter((r) => r.finalScore >= minScore)
+      .sort((a, b) => b.finalScore - a.finalScore);
+
+    return ranked.slice(0, topK);
   }
 }
 
@@ -478,6 +827,8 @@ export class RetrievalService {
     this.activeProvider = defaultProvider;
     this.registerProvider(defaultProvider);
     this.registerProvider(new BM25RetrievalProvider());
+    this.registerProvider(new HybridRetrievalProvider());
+    this.registerProvider(new CandidateAwareRetrievalProvider());
   }
 
   /**
@@ -530,13 +881,20 @@ export class RetrievalService {
     const startTime = Date.now();
     const rawResults = await this.activeProvider.retrieve(query, options);
 
-    const validatedResults = rawResults.map((item) =>
-      strictValidate(
+    const validatedResults = rawResults.map((item) => {
+      if ("finalScore" in item && typeof item.finalScore === "number") {
+        return strictValidate(
+          CandidateAwareRetrievedChunkSchema,
+          item,
+          `Candidate Aware Chunk ${item.chunkId}`
+        );
+      }
+      return strictValidate(
         RetrievedChunkSchema,
         item,
         `Retrieved Chunk ${item.chunkId}`
-      )
-    );
+      );
+    });
 
     const durationMs = Date.now() - startTime;
 
@@ -577,7 +935,6 @@ export async function performSemanticSearch(
   const opts: RetrievalOptions =
     typeof options === "number" ? { topK: options } : options || {};
 
-  // Temporarily switch active provider if needed or use default (semantic)
   const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
   if (currentProviderInfo.sourceType !== "semantic") {
     defaultRetrievalService.setProvider("semantic");
@@ -621,6 +978,80 @@ export async function performBM25Search(
   defaultRetrievalService.setProvider(currentProviderInfo.name);
 
   const resultsArray = [...response.results] as RetrievedChunk[] &
+    RetrievalResponse;
+  resultsArray.query = response.query;
+  resultsArray.results = response.results;
+  resultsArray.totalRetrieved = response.totalRetrieved;
+  resultsArray.durationMs = response.durationMs;
+  resultsArray.retrievalSource = response.retrievalSource;
+
+  return resultsArray;
+}
+
+/**
+ * Convenience helper executing Hybrid Retrieval Fusion using defaultRetrievalService.
+ * Supports both RetrievalOptions object or direct topK number.
+ * Returns retrieved chunks array decorated with full RetrievalResponse metadata.
+ *
+ * @param query - User query string
+ * @param options - Optional RetrievalOptions object or numeric topK
+ * @returns Array of RetrievedChunk objects extended with RetrievalResponse metadata
+ */
+export async function performHybridSearch(
+  query: string,
+  options?: RetrievalOptions | number
+): Promise<RetrievedChunk[] & RetrievalResponse> {
+  const opts: RetrievalOptions =
+    typeof options === "number" ? { topK: options } : options || {};
+
+  const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
+  defaultRetrievalService.setProvider("hybrid");
+
+  const response = await defaultRetrievalService.retrieve(query, opts);
+
+  // Restore previous active provider
+  defaultRetrievalService.setProvider(currentProviderInfo.name);
+
+  const resultsArray = [...response.results] as RetrievedChunk[] &
+    RetrievalResponse;
+  resultsArray.query = response.query;
+  resultsArray.results = response.results;
+  resultsArray.totalRetrieved = response.totalRetrieved;
+  resultsArray.durationMs = response.durationMs;
+  resultsArray.retrievalSource = response.retrievalSource;
+
+  return resultsArray;
+}
+
+/**
+ * Convenience helper executing Candidate-Aware Personalized Retrieval using defaultRetrievalService.
+ * Supports both RetrievalOptions object or direct topK number.
+ * Returns candidate-aware retrieved chunks array decorated with full RetrievalResponse metadata.
+ *
+ * @param query - User query string
+ * @param candidateProfile - CandidateProfile, CandidateIntelligenceProfile, or generic candidate object
+ * @param options - Optional RetrievalOptions object or numeric topK
+ * @returns Array of CandidateAwareRetrievedChunk objects extended with RetrievalResponse metadata
+ */
+export async function performCandidateAwareSearch(
+  query: string,
+  candidateProfile: CandidateProfile | CandidateIntelligenceProfile | Record<string, unknown>,
+  options?: RetrievalOptions | number
+): Promise<CandidateAwareRetrievedChunk[] & RetrievalResponse> {
+  const opts: RetrievalOptions =
+    typeof options === "number"
+      ? { topK: options, candidateProfile: candidateProfile as CandidateProfile }
+      : { ...options, candidateProfile: candidateProfile as CandidateProfile };
+
+  const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
+  defaultRetrievalService.setProvider("candidate-aware");
+
+  const response = await defaultRetrievalService.retrieve(query, opts);
+
+  // Restore previous active provider
+  defaultRetrievalService.setProvider(currentProviderInfo.name);
+
+  const resultsArray = [...response.results] as CandidateAwareRetrievedChunk[] &
     RetrievalResponse;
   resultsArray.query = response.query;
   resultsArray.results = response.results;

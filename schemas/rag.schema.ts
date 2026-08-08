@@ -1,7 +1,7 @@
 /**
  * schemas/rag.schema.ts
  *
- * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage & Retrieval.
+ * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage, Hybrid Retrieval & Candidate-Aware Ranking.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -93,7 +93,7 @@ export const VectorStorageStatsSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Retrieval Architecture Schemas (Milestone 6.1)
+// Retrieval Architecture, Hybrid Fusion & Candidate Ranking Schemas (Milestones 6.1 - 6.5)
 // ---------------------------------------------------------------------------
 
 export const RetrievalFilterSchema = z.object({
@@ -102,10 +102,23 @@ export const RetrievalFilterSchema = z.object({
   difficulty: ConceptDifficultyLevelSchema.optional(),
 });
 
+export const HybridConfigSchema = z.object({
+  semanticWeight: z.number().min(0).max(1),
+  bm25Weight: z.number().min(0).max(1),
+  fetchTopK: z.number().int().positive().optional(),
+});
+
+export const CandidateAwareConfigSchema = z.object({
+  hybridWeight: z.number().min(0).max(1),
+  candidateWeight: z.number().min(0).max(1),
+});
+
 export const RetrievalOptionsSchema = z.object({
   topK: z.number().int().positive().optional(),
-  minScore: z.number().min(0).max(1).optional(),
+  minScore: z.number().min(-1).optional(),
   filter: RetrievalFilterSchema.optional(),
+  hybridConfig: HybridConfigSchema.optional(),
+  candidateAwareConfig: CandidateAwareConfigSchema.optional(),
 });
 
 export const RetrievedChunkSchema = z.object({
@@ -114,6 +127,16 @@ export const RetrievedChunkSchema = z.object({
   metadata: ChunkMetadataSchema,
   score: z.number(),
   retrievalSource: z.string().min(1, "retrievalSource is required"),
+  sources: z.array(z.string()).optional(),
+  hybridScore: z.number().optional(),
+  candidateScore: z.number().optional(),
+  finalScore: z.number().optional(),
+});
+
+export const CandidateAwareRetrievedChunkSchema = RetrievedChunkSchema.extend({
+  hybridScore: z.number(),
+  candidateScore: z.number(),
+  finalScore: z.number(),
 });
 
 export const RetrievalResponseSchema = z.object({

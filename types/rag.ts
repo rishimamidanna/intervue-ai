@@ -1,12 +1,13 @@
 /**
  * types/rag.ts
  *
- * RAG, Semantic Chunking, Embedding, Vector Storage & Retrieval Contracts (Milestone 4, 5 & 6.1)
+ * RAG, Semantic Chunking, Embedding, Vector Storage, Retrieval, Hybrid Fusion & Candidate-Aware Ranking Contracts (Milestones 4, 5 & 6)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
 
 import type { ConceptDifficultyLevel, CurriculumSourceRef } from "./curriculum";
+import type { CandidateProfile, CandidateIntelligenceProfile } from "./candidate";
 
 /**
  * Metadata associated with a curriculum-aware semantic chunk.
@@ -113,10 +114,10 @@ export interface VectorStorageStats {
 }
 
 // ---------------------------------------------------------------------------
-// Retrieval Architecture Contracts (Milestone 6.1)
+// Retrieval Architecture, Hybrid Fusion & Candidate Ranking Contracts (Milestones 6.1 - 6.5)
 // ---------------------------------------------------------------------------
 
-export type RetrievalSource = "semantic" | "bm25" | "hybrid" | string;
+export type RetrievalSource = "semantic" | "bm25" | "hybrid" | "candidate-aware" | string;
 
 export interface RetrievalFilter {
   day?: number;
@@ -124,10 +125,24 @@ export interface RetrievalFilter {
   difficulty?: ConceptDifficultyLevel;
 }
 
+export interface HybridConfig {
+  semanticWeight: number;
+  bm25Weight: number;
+  fetchTopK?: number;
+}
+
+export interface CandidateAwareConfig {
+  hybridWeight: number;
+  candidateWeight: number;
+}
+
 export interface RetrievalOptions {
   topK?: number;
   minScore?: number;
   filter?: RetrievalFilter;
+  hybridConfig?: HybridConfig;
+  candidateAwareConfig?: CandidateAwareConfig;
+  candidateProfile?: CandidateProfile | CandidateIntelligenceProfile;
 }
 
 export interface RetrievedChunk {
@@ -136,6 +151,16 @@ export interface RetrievedChunk {
   metadata: ChunkMetadata;
   score: number;
   retrievalSource: RetrievalSource;
+  sources?: RetrievalSource[];
+  hybridScore?: number;
+  candidateScore?: number;
+  finalScore?: number;
+}
+
+export interface CandidateAwareRetrievedChunk extends RetrievedChunk {
+  hybridScore: number;
+  candidateScore: number;
+  finalScore: number;
 }
 
 export interface RetrievalResponse {
