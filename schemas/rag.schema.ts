@@ -1,7 +1,7 @@
 /**
  * schemas/rag.schema.ts
  *
- * Zod validation schema for RAG Semantic Chunks, Metadata & Validation Reports.
+ * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings & Validation Reports.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -49,4 +49,24 @@ export const ChunkValidationReportSchema = z.object({
   duplicateContentHashes: z.array(z.string()),
   errors: z.array(z.string()),
   timestamp: z.string(),
+});
+
+// ---------------------------------------------------------------------------
+// Embedding Architecture Schemas (Milestone 5.1)
+// ---------------------------------------------------------------------------
+
+export const EmbeddingConfigSchema = z.object({
+  provider: z.string().min(1, "provider name is required"),
+  model: z.string().min(1, "model name is required"),
+  dimensions: z.number().int().positive("dimensions must be a positive integer"),
+  batchSize: z.number().int().positive("batchSize must be a positive integer"),
+});
+
+export const VectorEmbeddingSchema = z.object({
+  chunkId: z.string().min(1, "chunkId is required"),
+  vector: z.array(z.number()).min(1, "vector must not be empty"),
+  dimensions: z.number().int().positive(),
+  modelName: z.string().min(1),
+  metadata: ChunkMetadataSchema,
+  createdAt: z.string(),
 });
