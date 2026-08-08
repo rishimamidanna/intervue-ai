@@ -1,7 +1,7 @@
 /**
  * types/rag.ts
  *
- * RAG, Semantic Chunking & Embedding Architecture Contracts (Milestone 4 & 5.1)
+ * RAG, Semantic Chunking & Embedding Architecture Contracts (Milestone 4, 5.1 & 5.2)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
@@ -63,7 +63,7 @@ export interface ChunkValidationReport {
 }
 
 // ---------------------------------------------------------------------------
-// Embedding Architecture Contracts (Milestone 5.1)
+// Embedding Architecture Contracts (Milestone 5.1 & 5.2)
 // ---------------------------------------------------------------------------
 
 export type EmbeddingProviderType = "mock" | "openai" | "cohere" | "local" | string;
@@ -77,6 +77,7 @@ export interface EmbeddingConfig {
 
 export interface VectorEmbedding {
   chunkId: string;
+  content: string;
   vector: number[];
   dimensions: number;
   modelName: string;

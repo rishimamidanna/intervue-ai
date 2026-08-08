@@ -52,7 +52,7 @@ export const ChunkValidationReportSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Embedding Architecture Schemas (Milestone 5.1)
+// Embedding Architecture Schemas (Milestone 5.1 & 5.2)
 // ---------------------------------------------------------------------------
 
 export const EmbeddingConfigSchema = z.object({
@@ -64,6 +64,7 @@ export const EmbeddingConfigSchema = z.object({
 
 export const VectorEmbeddingSchema = z.object({
   chunkId: z.string().min(1, "chunkId is required"),
+  content: z.string().min(1, "content is required"),
   vector: z.array(z.number()).min(1, "vector must not be empty"),
   dimensions: z.number().int().positive(),
   modelName: z.string().min(1),

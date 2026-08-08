@@ -1,13 +1,14 @@
 /**
  * server/embedding-service.ts
  *
- * Embedding Architecture & Provider Abstraction Engine (Milestone 5.1)
+ * Embedding Architecture & Embedding Generator Engine (Milestone 5.1 & 5.2)
  *
  * Implements the core flow:
  * Chunk -> Embedding Service -> Vector Representation
  *
- * Provides a clean interface abstraction supporting pluggable and replaceable
- * embedding providers (Deterministic Mock, OpenAI, Cohere, Local Transformers).
+ * Connects validated curriculum chunks to a deterministic embedding provider,
+ * generating strongly typed VectorEmbedding objects preserving chunkId, original content,
+ * vector array, and metadata reference.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -19,6 +20,13 @@ import type {
 } from "@/types/rag";
 import { VectorEmbeddingSchema } from "@/schemas/rag.schema";
 import { strictValidate } from "@/lib/validation";
+import { generateAllCurriculumChunks, getChunksByDay } from "./chunking-service";
+
+// ---------------------------------------------------------------------------
+// In-Memory Embeddings Cache
+// ---------------------------------------------------------------------------
+
+let _embeddingsCache: VectorEmbedding[] | null = null;
 
 // ---------------------------------------------------------------------------
 // Provider Abstraction Contract
@@ -41,7 +49,7 @@ export interface IEmbeddingProvider {
 /**
  * Deterministic Embedding Provider.
  * Generates normalized 384-dimensional float vector representations deterministically
- * without requiring external LLM APIs or downloading local weight models.
+ * from chunk content without requiring external LLM APIs or downloading local weight models.
  */
 export class DeterministicEmbeddingProvider implements IEmbeddingProvider {
   name = "deterministic-embedding-provider";
@@ -65,6 +73,7 @@ export class DeterministicEmbeddingProvider implements IEmbeddingProvider {
 
     const rawEmbedding: VectorEmbedding = {
       chunkId: chunk.chunkId,
+      content: chunk.content,
       vector,
       dimensions: this.config.dimensions,
       modelName: this.config.model,
@@ -131,6 +140,7 @@ export class EmbeddingService {
    */
   setProvider(newProvider: IEmbeddingProvider): void {
     this.provider = newProvider;
+    _embeddingsCache = null;
   }
 
   /**
@@ -162,3 +172,68 @@ export class EmbeddingService {
  * Singleton instance of EmbeddingService initialized with the default provider.
  */
 export const defaultEmbeddingService = new EmbeddingService();
+
+// ---------------------------------------------------------------------------
+// High-Level Embedding Generation Pipeline (Milestone 5.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates a VectorEmbedding object for a single CurriculumChunk using defaultEmbeddingService.
+ *
+ * @param chunk - CurriculumChunk
+ * @returns VectorEmbedding
+ */
+export async function generateChunkEmbedding(
+  chunk: CurriculumChunk
+): Promise<VectorEmbedding> {
+  return defaultEmbeddingService.embed(chunk);
+}
+
+/**
+ * Generates VectorEmbeddings for all validated curriculum chunks.
+ * Caches generated embeddings in memory.
+ *
+ * @returns Array of VectorEmbedding objects
+ */
+export async function generateAllCurriculumEmbeddings(): Promise<
+  VectorEmbedding[]
+> {
+  if (_embeddingsCache) return _embeddingsCache;
+
+  const chunks = await generateAllCurriculumChunks();
+  _embeddingsCache = await defaultEmbeddingService.embedBatch(chunks);
+  return _embeddingsCache;
+}
+
+/**
+ * Retrieves generated VectorEmbeddings for a specific curriculum day.
+ *
+ * @param day - Day number (1-indexed)
+ * @returns Array of VectorEmbedding objects
+ */
+export async function getEmbeddingsByDay(
+  day: number
+): Promise<VectorEmbedding[]> {
+  const dayChunks = await getChunksByDay(day);
+  return defaultEmbeddingService.embedBatch(dayChunks);
+}
+
+/**
+ * Retrieves VectorEmbedding by chunk ID.
+ *
+ * @param chunkId - Target chunk ID
+ * @returns VectorEmbedding or undefined
+ */
+export async function getEmbeddingByChunkId(
+  chunkId: string
+): Promise<VectorEmbedding | undefined> {
+  const allEmbeddings = await generateAllCurriculumEmbeddings();
+  return allEmbeddings.find((emb) => emb.chunkId === chunkId);
+}
+
+/**
+ * Clears the in-memory embeddings cache.
+ */
+export function clearEmbeddingCache(): void {
+  _embeddingsCache = null;
+}
