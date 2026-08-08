@@ -1,7 +1,7 @@
 /**
  * types/rag.ts
  *
- * RAG & Semantic Chunking Architecture Contracts (Milestone 4.1 & 4.2)
+ * RAG & Semantic Chunking Architecture Contracts (Milestone 4.1, 4.2 & 4.3)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
@@ -39,3 +39,25 @@ export interface CurriculumChunk {
  * Index mapping chunk ID to CurriculumChunk for O(1) retrieval.
  */
 export type ChunkIndex = Record<string, CurriculumChunk>;
+
+// ---------------------------------------------------------------------------
+// Chunk Quality Validation Contracts (Milestone 4.3)
+// ---------------------------------------------------------------------------
+
+export interface ChunkValidationError {
+  chunkId?: string;
+  field: string;
+  message: string;
+}
+
+export interface ChunkValidationReport {
+  isValid: boolean;
+  totalChecked: number;
+  validCount: number;
+  invalidCount: number;
+  duplicateCount: number;
+  duplicateChunkIds: string[];
+  duplicateContentHashes: string[];
+  errors: string[];
+  timestamp: string;
+}

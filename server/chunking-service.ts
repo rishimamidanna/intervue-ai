@@ -1,17 +1,25 @@
 /**
  * server/chunking-service.ts
  *
- * Curriculum-Aware Semantic Chunk Generator & Validation Engine (Milestone 4.1 & 4.2)
+ * Curriculum-Aware Semantic Chunk Generator & Chunk Quality Validation Engine (Milestone 4.1, 4.2 & 4.3)
  *
  * Generates meaningful, curriculum-aware semantic chunks following strict
  * Day -> Topic -> Concept boundaries prepared for vector embeddings and BM25 keyword search.
+ * Provides a quality validation layer enforcing required fields, content/metadata quality, and duplicate detection.
  *
  * Owner: Member 2 (Data + RAG)
  */
 
-import type { CurriculumChunk, ChunkMetadata } from "@/types/rag";
+import type {
+  CurriculumChunk,
+  ChunkMetadata,
+  ChunkValidationReport,
+} from "@/types/rag";
 import type { EnrichedCurriculumConcept } from "@/types/curriculum";
-import { CurriculumChunkSchema } from "@/schemas/rag.schema";
+import {
+  CurriculumChunkSchema,
+  ChunkValidationReportSchema,
+} from "@/schemas/rag.schema";
 import { strictValidate, safeValidate } from "@/lib/validation";
 import { loadEnrichedConcepts } from "./curriculum-service";
 
@@ -147,6 +155,151 @@ export async function getChunksByConcept(
     (chunk) =>
       chunk.concept.toLowerCase() === searchLower || chunk.chunkId === conceptName
   );
+}
+
+// ---------------------------------------------------------------------------
+// Chunk Quality Validation Layer (Milestone 4.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Evaluates the quality of a single chunk candidate.
+ * Verifies required fields, content non-emptiness, and metadata integrity.
+ *
+ * @param chunk - Raw chunk object to validate
+ * @returns Object with boolean valid status and error messages
+ */
+export function validateChunkQuality(chunk: unknown): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  const parsed = safeValidate(CurriculumChunkSchema, chunk);
+  if (!parsed.success) {
+    return { valid: false, errors: parsed.errors };
+  }
+
+  const c = parsed.data;
+
+  // 1. Content Quality
+  if (!c.content || c.content.trim().length < 10) {
+    errors.push(
+      `[${c.chunkId}] Content quality error: Content text is empty or too short (< 10 chars).`
+    );
+  }
+
+  // 2. Metadata Quality & Keywords
+  if (!c.metadata.keywords || c.metadata.keywords.length === 0) {
+    errors.push(
+      `[${c.chunkId}] Metadata quality error: Keywords array is missing or empty.`
+    );
+  }
+
+  if (!c.metadata.category || c.metadata.category.trim() === "") {
+    errors.push(`[${c.chunkId}] Metadata quality error: Category is missing.`);
+  }
+
+  if (!c.metadata.sourceRef || !c.metadata.sourceRef.uri) {
+    errors.push(
+      `[${c.chunkId}] Metadata quality error: Source reference information is missing.`
+    );
+  } else if (c.metadata.sourceRef.day !== c.day) {
+    errors.push(
+      `[${c.chunkId}] Metadata quality error: sourceRef.day (${c.metadata.sourceRef.day}) does not match chunk day (${c.day}).`
+    );
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Evaluates quality across a batch of chunks.
+ * Performs field completeness checks, content/metadata quality verification,
+ * and duplicate detection (duplicate chunk IDs and duplicate content text).
+ *
+ * @param chunks - Array of chunk candidates
+ * @returns ChunkValidationReport
+ */
+export function validateChunkBatchQuality(
+  chunks: unknown[]
+): ChunkValidationReport {
+  const errors: string[] = [];
+  const seenChunkIds = new Set<string>();
+  const seenContentTexts = new Set<string>();
+
+  const duplicateChunkIds: string[] = [];
+  const duplicateContentHashes: string[] = [];
+
+  let invalidCount = 0;
+  let duplicateCount = 0;
+
+  for (let i = 0; i < chunks.length; i++) {
+    const rawChunk = chunks[i];
+    const qualityResult = validateChunkQuality(rawChunk);
+
+    if (!qualityResult.valid) {
+      invalidCount++;
+      errors.push(...qualityResult.errors);
+      continue;
+    }
+
+    const c = rawChunk as CurriculumChunk;
+
+    // Duplicate Chunk ID check
+    if (seenChunkIds.has(c.chunkId)) {
+      duplicateCount++;
+      duplicateChunkIds.push(c.chunkId);
+      errors.push(`[${c.chunkId}] Duplicate detection error: Duplicate chunkId found.`);
+    } else {
+      seenChunkIds.add(c.chunkId);
+    }
+
+    // Duplicate Content check
+    const contentNormalized = c.content.trim().toLowerCase();
+    if (seenContentTexts.has(contentNormalized)) {
+      duplicateCount++;
+      duplicateContentHashes.push(c.chunkId);
+      errors.push(
+        `[${c.chunkId}] Duplicate detection error: Duplicate content text detected across chunks.`
+      );
+    } else {
+      seenContentTexts.add(contentNormalized);
+    }
+  }
+
+  const totalChecked = chunks.length;
+  const validCount = Math.max(0, totalChecked - invalidCount - duplicateCount);
+  const isValid = invalidCount === 0 && duplicateCount === 0;
+
+  const rawReport: ChunkValidationReport = {
+    isValid,
+    totalChecked,
+    validCount,
+    invalidCount,
+    duplicateCount,
+    duplicateChunkIds,
+    duplicateContentHashes,
+    errors,
+    timestamp: new Date().toISOString(),
+  };
+
+  return strictValidate(
+    ChunkValidationReportSchema,
+    rawReport,
+    "Chunk Quality Validation Report"
+  );
+}
+
+/**
+ * Validates quality and duplicate status for all generated curriculum chunks.
+ *
+ * @returns ChunkValidationReport
+ */
+export async function validateAllCurriculumChunksQuality(): Promise<
+  ChunkValidationReport
+> {
+  const chunks = await generateAllCurriculumChunks();
+  return validateChunkBatchQuality(chunks);
 }
 
 /**

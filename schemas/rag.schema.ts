@@ -1,7 +1,7 @@
 /**
  * schemas/rag.schema.ts
  *
- * Zod validation schema for RAG Semantic Chunks & Chunk Metadata.
+ * Zod validation schema for RAG Semantic Chunks, Metadata & Validation Reports.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -34,3 +34,19 @@ export const CurriculumChunkSchema = z.object({
 });
 
 export const CurriculumChunkArraySchema = z.array(CurriculumChunkSchema);
+
+// ---------------------------------------------------------------------------
+// Chunk Quality Validation Report Schema (Milestone 4.3)
+// ---------------------------------------------------------------------------
+
+export const ChunkValidationReportSchema = z.object({
+  isValid: z.boolean(),
+  totalChecked: z.number().int().min(0),
+  validCount: z.number().int().min(0),
+  invalidCount: z.number().int().min(0),
+  duplicateCount: z.number().int().min(0),
+  duplicateChunkIds: z.array(z.string()),
+  duplicateContentHashes: z.array(z.string()),
+  errors: z.array(z.string()),
+  timestamp: z.string(),
+});
