@@ -1,39 +1,49 @@
 /**
  * types/candidate.ts
  *
- * Candidate profile contracts matching the official hackathon Candidate Profile schema.
+ * Candidate profile contracts matching candidate data requirements.
  *
- * Owner: Shared (types/ directory)
+ * Owner: Shared (types/ directory) - Member 2 (Data + RAG) updated
  */
-
-export interface CandidateMember {
-  id: string;
-  name: string;
-  jobRole: string;
-  yearsExperience: number;
-  education: string;
-  status: string;
-}
 
 export interface CandidateMission {
   day: number;
   title: string;
-  passed?: boolean;
   attempts?: number;
+  /** Whether candidate passed the mission test (passed=false != skipped=true) */
+  passed?: boolean;
+  /** Whether candidate skipped the mission */
   skipped?: boolean;
 }
 
 export interface CandidateSignals {
-  commitDays: number;
-  missionsCompleted: number;
-  missionsFirstTry: number;
+  commitDays?: number;
+  missionsCompleted?: number;
+  missionsFirstTry?: number;
+  [key: string]: unknown;
+}
+
+export interface CandidateMember {
+  id: string;
+  name?: string;
+  jobRole: string;
+  yearsExperience: number;
+  education?: string;
+  status?: string;
 }
 
 /**
- * Official CandidateProfile structure from hackathon specification.
+ * Official CandidateProfile structure.
+ * Preserves required fields: id, role, experience, missions, attempts, passed, skipped, signals, member.
  */
 export interface CandidateProfile {
-  member: CandidateMember;
+  id?: string;
+  role?: string;
+  experience?: number;
   missions: CandidateMission[];
-  signals: CandidateSignals;
+  attempts?: number;
+  passed?: boolean;
+  skipped?: boolean;
+  signals?: CandidateSignals;
+  member?: CandidateMember;
 }

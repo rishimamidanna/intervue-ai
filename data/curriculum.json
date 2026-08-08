@@ -1,1 +1,165 @@
-[]
+[
+  {
+    "day": 1,
+    "module": "RAG Foundations",
+    "topic": "Vector Embeddings",
+    "title": "Vector Embeddings & High-Dimensional Vector Spaces",
+    "concepts": [
+      "Dense Vectors",
+      "Cosine Similarity",
+      "Embedding Models",
+      "Dimensionality Reduction"
+    ],
+    "content": "Fundamentals of mapping unstructured text to dense vector representations, embedding normalization, and vector similarity metrics.",
+    "learningObjectives": [
+      "Understand vector space embeddings",
+      "Calculate similarity using Cosine & Dot Product",
+      "Evaluate text embedding models"
+    ],
+    "tools": [
+      "OpenAI Embeddings",
+      "pgvector",
+      "Pinecone",
+      "FAISS"
+    ]
+  },
+  {
+    "day": 2,
+    "module": "RAG Foundations",
+    "topic": "Chunking Strategies",
+    "title": "Document Processing & Chunking Strategies",
+    "concepts": [
+      "Fixed-size Chunking",
+      "Semantic Chunking",
+      "Overlap & Context Retention",
+      "Document Parsing"
+    ],
+    "content": "Techniques for partitioning documents into optimal chunks for embedding and context retrieval without losing semantic coherence.",
+    "learningObjectives": [
+      "Select chunk size and overlap parameters",
+      "Implement recursive character text splitting",
+      "Evaluate retrieval quality vs chunk size"
+    ],
+    "tools": [
+      "LangChain Text Splitters",
+      "LlamaIndex Parsers",
+      "Tiktoken"
+    ]
+  },
+  {
+    "day": 3,
+    "module": "RAG Advanced",
+    "topic": "Hybrid Search & Reranking",
+    "title": "Hybrid Search & Cross-Encoder Reranking",
+    "concepts": [
+      "Sparse Search (BM25)",
+      "Dense Retrieval",
+      "Reciprocal Rank Fusion (RRF)",
+      "Cross-Encoder Reranking"
+    ],
+    "content": "Combining keyword-based BM25 with vector search, followed by deep cross-encoder re-ranking for maximum retrieval accuracy.",
+    "learningObjectives": [
+      "Implement BM25 lexical search",
+      "Combine sparse and dense retrieval scores using RRF",
+      "Apply Cohere/BGE rerankers"
+    ],
+    "tools": [
+      "BM25",
+      "Cohere Rerank",
+      "Elasticsearch",
+      "Qdrant"
+    ]
+  },
+  {
+    "day": 4,
+    "module": "RAG Advanced",
+    "topic": "RAG Systems & Prompting",
+    "title": "Retrieval Augmented Generation Architecture",
+    "concepts": [
+      "Context Injection",
+      "Prompt Engineering for RAG",
+      "Hallucination Mitigation",
+      "Citation & Source Attribution"
+    ],
+    "content": "Building end-to-end RAG pipelines that ground LLM outputs with retrieved context documents.",
+    "learningObjectives": [
+      "Construct robust RAG prompts",
+      "Mitigate hallucination via grounded context",
+      "Implement source citation formatting"
+    ],
+    "tools": [
+      "Vercel AI SDK",
+      "LangChain",
+      "OpenAI GPT-4o"
+    ]
+  },
+  {
+    "day": 5,
+    "module": "Evaluation & Testing",
+    "topic": "RAG Evaluation Metrics",
+    "title": "RAG Triad Evaluation & Benchmarking",
+    "concepts": [
+      "Context Relevance",
+      "Groundedness / Faithfulness",
+      "Answer Relevance",
+      "RAGAS Framework"
+    ],
+    "content": "Automated benchmarking and quantitative evaluation of RAG systems using LLM-as-a-judge methodologies.",
+    "learningObjectives": [
+      "Calculate RAGAS metrics",
+      "Benchmark context recall and precision",
+      "Build automated evaluation test suites"
+    ],
+    "tools": [
+      "RAGAS",
+      "TruLens",
+      "DeepEval"
+    ]
+  },
+  {
+    "day": 6,
+    "module": "AI Agents & Tool Use",
+    "topic": "Agentic Workflows",
+    "title": "AI Agents, ReAct Prompting & Tool Execution",
+    "concepts": [
+      "Reasoning & Action (ReAct)",
+      "Function Calling",
+      "Agent State Management",
+      "Error Recovery"
+    ],
+    "content": "Designing autonomous AI agents that iteratively plan, call tools, analyze outputs, and solve complex multi-step technical tasks.",
+    "learningObjectives": [
+      "Implement ReAct loops",
+      "Define structured function calling schemas",
+      "Handle tool execution errors gracefully"
+    ],
+    "tools": [
+      "LangGraph",
+      "Vercel AI SDK Tools",
+      "AutoGPT"
+    ]
+  },
+  {
+    "day": 7,
+    "module": "AI Agents & Tool Use",
+    "topic": "Multi-Agent Coordination",
+    "title": "Multi-Agent Systems & Orchestration",
+    "concepts": [
+      "Multi-Agent Architecture",
+      "Task Delegation",
+      "Agent Communication",
+      "Consensus & Aggregation"
+    ],
+    "content": "Architecting multi-agent systems where specialized agents collaborate to handle complex software engineering tasks.",
+    "learningObjectives": [
+      "Structure multi-agent communication channels",
+      "Implement orchestrator-worker patterns",
+      "Synthesize outputs from multiple subagents"
+    ],
+    "tools": [
+      "CrewAI",
+      "AutoGen",
+      "Google Antigravity SDK"
+    ]
+  }
+]

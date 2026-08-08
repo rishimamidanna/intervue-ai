@@ -1,1 +1,155 @@
-[]
+[
+  {
+    "id": "cand_001",
+    "role": "Senior AI Engineer",
+    "experience": 5,
+    "attempts": 6,
+    "passed": false,
+    "skipped": false,
+    "member": {
+      "id": "cand_001",
+      "name": "Alex Rivera",
+      "jobRole": "Senior AI Engineer",
+      "yearsExperience": 5,
+      "education": "B.S. Computer Science",
+      "status": "Active"
+    },
+    "missions": [
+      {
+        "day": 1,
+        "title": "Vector Embeddings & High-Dimensional Vector Spaces",
+        "attempts": 1,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "day": 2,
+        "title": "Document Processing & Chunking Strategies",
+        "attempts": 2,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "day": 3,
+        "title": "Hybrid Search & Cross-Encoder Reranking",
+        "attempts": 3,
+        "passed": false,
+        "skipped": false
+      },
+      {
+        "day": 4,
+        "title": "Retrieval Augmented Generation Architecture",
+        "attempts": 0,
+        "passed": false,
+        "skipped": true
+      }
+    ],
+    "signals": {
+      "commitDays": 14,
+      "missionsCompleted": 2,
+      "missionsFirstTry": 1
+    }
+  },
+  {
+    "id": "cand_002",
+    "role": "Full Stack Engineer",
+    "experience": 3,
+    "attempts": 4,
+    "passed": true,
+    "skipped": false,
+    "member": {
+      "id": "cand_002",
+      "name": "Jordan Smith",
+      "jobRole": "Full Stack Engineer",
+      "yearsExperience": 3,
+      "education": "M.S. Software Engineering",
+      "status": "Active"
+    },
+    "missions": [
+      {
+        "day": 1,
+        "title": "Vector Embeddings & High-Dimensional Vector Spaces",
+        "attempts": 1,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "day": 2,
+        "title": "Document Processing & Chunking Strategies",
+        "attempts": 1,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "day": 3,
+        "title": "Hybrid Search & Cross-Encoder Reranking",
+        "attempts": 1,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "day": 4,
+        "title": "Retrieval Augmented Generation Architecture",
+        "attempts": 1,
+        "passed": true,
+        "skipped": false
+      }
+    ],
+    "signals": {
+      "commitDays": 20,
+      "missionsCompleted": 4,
+      "missionsFirstTry": 4
+    }
+  },
+  {
+    "id": "cand_003",
+    "role": "Machine Learning Engineer",
+    "experience": 2,
+    "attempts": 3,
+    "passed": false,
+    "skipped": false,
+    "member": {
+      "id": "cand_003",
+      "name": "Taylor Chen",
+      "jobRole": "Machine Learning Engineer",
+      "yearsExperience": 2,
+      "education": "B.S. Data Science",
+      "status": "Active"
+    },
+    "missions": [
+      {
+        "day": 1,
+        "title": "Vector Embeddings & High-Dimensional Vector Spaces",
+        "attempts": 2,
+        "passed": true,
+        "skipped": false
+      },
+      {
+        "day": 2,
+        "title": "Document Processing & Chunking Strategies",
+        "attempts": 0,
+        "passed": false,
+        "skipped": true
+      },
+      {
+        "day": 3,
+        "title": "Hybrid Search & Cross-Encoder Reranking",
+        "attempts": 1,
+        "passed": false,
+        "skipped": false
+      },
+      {
+        "day": 4,
+        "title": "Retrieval Augmented Generation Architecture",
+        "attempts": 0,
+        "passed": false,
+        "skipped": true
+      }
+    ],
+    "signals": {
+      "commitDays": 8,
+      "missionsCompleted": 1,
+      "missionsFirstTry": 0
+    }
+  }
+]
