@@ -772,6 +772,23 @@ export interface QueryDecompositionResponse {
   durationMs: number;
 }
 
+// ---------------------------------------------------------------------------
+// Dynamic Hybrid Search Contracts (Milestone 7.18)
+// ---------------------------------------------------------------------------
+
+export interface DynamicHybridWeightConfig {
+  semanticWeight: number;
+  bm25Weight: number;
+}
+
+export interface DynamicHybridDecision {
+  query: string;
+  queryType: string;
+  weights: DynamicHybridWeightConfig;
+  explanation: string;
+}
+
+
 
 
 

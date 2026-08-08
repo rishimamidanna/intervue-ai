@@ -686,6 +686,23 @@ export const QueryDecompositionResponseSchema = z.object({
   durationMs: z.number().min(0),
 });
 
+// ---------------------------------------------------------------------------
+// Dynamic Hybrid Search Schemas (Milestone 7.18)
+// ---------------------------------------------------------------------------
+
+export const DynamicHybridWeightConfigSchema = z.object({
+  semanticWeight: z.number().min(0).max(1),
+  bm25Weight: z.number().min(0).max(1),
+});
+
+export const DynamicHybridDecisionSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  queryType: z.string().min(1, "queryType is required"),
+  weights: DynamicHybridWeightConfigSchema,
+  explanation: z.string().min(1, "explanation is required"),
+});
+
+
 
 
 
