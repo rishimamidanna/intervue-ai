@@ -1,13 +1,13 @@
 /**
  * types/curriculum.ts
  *
- * Curriculum structure contracts.
+ * Curriculum structure & normalized curriculum contracts.
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG) updated
  */
 
 // ---------------------------------------------------------------------------
-// Curriculum Day
+// Raw Curriculum Day
 // ---------------------------------------------------------------------------
 
 /**
@@ -33,9 +33,45 @@ export interface CurriculumDay {
   tools?: string[];
 }
 
-// ---------------------------------------------------------------------------
-// Curriculum Index
-// ---------------------------------------------------------------------------
-
 /** The full curriculum, indexed by day number for O(1) lookup */
 export type CurriculumIndex = Record<number, CurriculumDay>;
+
+// ---------------------------------------------------------------------------
+// Normalized Curriculum Document (Milestone 3.1)
+// ---------------------------------------------------------------------------
+
+export interface CurriculumSourceRef {
+  file: string;
+  day: number;
+  uri: string;
+}
+
+export interface CurriculumMetadata {
+  day: number;
+  topic: string;
+  title: string;
+  module: string;
+  conceptCount: number;
+  toolsCount: number;
+  objectivesCount: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Normalized curriculum document representation prepared for future RAG / indexing.
+ */
+export interface NormalizedCurriculumItem {
+  id: string;
+  day: number;
+  module: string;
+  topic: string;
+  title: string;
+  concepts: string[];
+  content: string;
+  learningObjectives: string[];
+  tools: string[];
+  sourceRef: CurriculumSourceRef;
+  metadata: CurriculumMetadata;
+}
+
+export type NormalizedCurriculumIndex = Record<number, NormalizedCurriculumItem>;

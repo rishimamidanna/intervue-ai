@@ -1,7 +1,7 @@
 /**
  * types/candidate.ts
  *
- * Candidate profile contracts matching candidate data requirements.
+ * Candidate profile & candidate intelligence contracts.
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG) updated
  */
@@ -33,8 +33,7 @@ export interface CandidateMember {
 }
 
 /**
- * Official CandidateProfile structure.
- * Preserves required fields: id, role, experience, missions, attempts, passed, skipped, signals, member.
+ * CandidateProfile structure matching Milestone 1 specifications.
  */
 export interface CandidateProfile {
   id?: string;
@@ -46,4 +45,59 @@ export interface CandidateProfile {
   skipped?: boolean;
   signals?: CandidateSignals;
   member?: CandidateMember;
+}
+
+// ---------------------------------------------------------------------------
+// Candidate Intelligence Engine Types (Milestone 2)
+// ---------------------------------------------------------------------------
+
+export interface CandidateStrength {
+  topic: string;
+  day?: number;
+  evidence: string;
+  reason: string;
+}
+
+export type VerificationSignal =
+  | "failed_mission"
+  | "skipped_topic"
+  | "high_attempts"
+  | "incomplete_evidence";
+
+export interface VerificationArea {
+  topic: string;
+  day?: number;
+  signal: VerificationSignal;
+  reason: string;
+}
+
+export interface LearningProfile {
+  consistencyLevel: "High" | "Moderate" | "Low";
+  completionRate: number; // 0-100 percentage
+  firstTryPassRate: number; // 0-100 percentage
+  totalCommitDays: number;
+  summary: string;
+}
+
+export interface RecommendedFocusTopic {
+  day: number;
+  topic: string;
+  priority: "High" | "Medium" | "Low";
+  priorityScore: number;
+  reason: string;
+}
+
+/**
+ * Structured Candidate Intelligence Profile produced by Candidate Intelligence Engine.
+ */
+export interface CandidateIntelligenceProfile {
+  candidateId: string;
+  role: string;
+  experience: number;
+  education: string;
+  strengths: CandidateStrength[];
+  verificationAreas: VerificationArea[];
+  learningProfile: LearningProfile;
+  recommendedFocus: RecommendedFocusTopic[];
+  generatedAt: string;
 }

@@ -4,14 +4,16 @@
  * Candidate Data Service
  *
  * Loads, validates, and retrieves candidate profiles from candidates.json.
- * Provides typed access to candidate data for AI and server modules.
+ * Provides typed access to candidate data and intelligence profiles.
  *
  * Owner: Member 2 (Data + RAG)
  */
 
-import type { CandidateProfile, CandidateMember } from "@/types/candidate";
+import type { CandidateProfile, CandidateMember, CandidateIntelligenceProfile } from "@/types/candidate";
 import { CandidatesArraySchema } from "@/schemas/candidate.schema";
 import { safeValidate } from "@/lib/validation";
+import { analyzeCandidateIntelligence } from "./candidate-intelligence";
+import { loadCurriculum } from "./curriculum-service";
 
 // ---------------------------------------------------------------------------
 // Data Loading & Caching
@@ -84,6 +86,28 @@ export async function getCandidateById(
       (c) => c.id === candidateId || c.member?.id === candidateId
     ) ?? null
   );
+}
+
+/**
+ * Retrieves the generated Candidate Intelligence Profile for a given candidate ID.
+ *
+ * @param candidateId - The candidate identifier
+ * @returns CandidateIntelligenceProfile or null if candidate not found
+ */
+export async function getCandidateIntelligenceProfile(
+  candidateId: string
+): Promise<CandidateIntelligenceProfile | null> {
+  const candidate = await getCandidateById(candidateId);
+  if (!candidate) return null;
+
+  let curriculum;
+  try {
+    curriculum = await loadCurriculum();
+  } catch {
+    curriculum = undefined;
+  }
+
+  return analyzeCandidateIntelligence(candidate, curriculum);
 }
 
 /**
