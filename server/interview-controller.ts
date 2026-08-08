@@ -273,9 +273,29 @@ export async function initializeInternalInterview(
 
   const state = requireSession(sessionId);
   const stateWithTwin: InterviewState = { ...state, knowledgeTwin };
-  setState(sessionId, stateWithTwin);
-
   const question = await generateQuestion(stateWithTwin, plan, curriculum);
+
+  const stateWithInitialQ: InterviewState = {
+    ...stateWithTwin,
+    questionHistory: [
+      {
+        question,
+        answer: "",
+        evaluation: {
+          correctness: 0,
+          reasoning: 0,
+          depth: 0,
+          communication: 0,
+          engineering: 0,
+          coveredConcepts: [],
+          missingConcepts: [],
+          misconceptions: [],
+          nextAction: "follow_up",
+        },
+      },
+    ],
+  };
+  setState(sessionId, stateWithInitialQ);
 
   return {
     status: "interviewing",
@@ -293,10 +313,13 @@ export async function processAnswer(
   const curriculum = await loadCurriculum();
   const plan = getCachedPlan(sessionId) ?? await createInterviewPlan(state.knowledgeTwin, curriculum);
 
-  const question = state.questionHistory
-    .map((t) => t.question)
-    .find((q) => q.id === questionId)
-    ?? (await generateQuestion(state, plan, curriculum));
+  // Fallback to active question from history if questionId lookup fails
+  const question =
+    state.questionHistory.map((t) => t.question).find((q) => q.id === questionId) ??
+    (state.questionHistory.length > 0
+      ? state.questionHistory[state.questionHistory.length - 1].question
+      : null) ??
+    (await generateQuestion(state, plan, curriculum));
 
   // Retrieve curriculum context for evaluation grounding
   const retrievedContext = retrieveCurriculumContext(

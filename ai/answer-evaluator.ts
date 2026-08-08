@@ -86,6 +86,33 @@ function checkShallowAnswer(answer: string): boolean {
   return words.length <= 2 && clean.length < 15;
 }
 
+/**
+ * Validates whether candidate answer contains explanation structure indicators (verbs/connectives).
+ * Fails for noun phrases or raw keywords lacking explanatory flow.
+ */
+function checkExplanationStructure(answer: string): boolean {
+  const clean = answer.trim().toLowerCase();
+  const words = clean.split(/\s+/).filter((w) => w.length > 0);
+
+  // Answers with >= 30 words are treated as structured explanations
+  if (words.length >= 30) return true;
+
+  const indicators = [
+    "how", "why", "uses", "use", "using", "used",
+    "retrieves", "retrieve", "retrieving", "retrieval",
+    "generates", "generate", "generating", "generation",
+    "because", "by", "provides", "provide", "providing",
+    "improves", "improve", "improving", "combines", "combine",
+    "combining", "balances", "balance", "balancing",
+    "enables", "enable", "enabling", "allows", "allow",
+    "calculates", "calculate", "calculating", "works",
+    "processes", "process", "processing", "performs",
+    "helps", "serves", "acts", "is a", "is an", "is the"
+  ];
+
+  return indicators.some((ind) => clean.includes(ind));
+}
+
 // ---------------------------------------------------------------------------
 // Function
 // ---------------------------------------------------------------------------
@@ -142,8 +169,8 @@ export async function evaluateAnswer(
     };
   }
 
-  // 3. SHALLOW ANSWER CHECK (e.g. single word "RAG")
-  if (checkShallowAnswer(answer)) {
+  // 3. SHALLOW / UNSTRUCTURED EXPLANATION CHECK (e.g. single word "RAG" or "RAG architecture")
+  if (checkShallowAnswer(answer) || !checkExplanationStructure(answer)) {
     return {
       correctness: 2,
       reasoning: 1,
@@ -152,7 +179,7 @@ export async function evaluateAnswer(
       engineering: 1,
       coveredConcepts: [],
       missingConcepts: ["Insufficient explanation provided", ...question.expectedConcepts],
-      misconceptions: ["Vague single-word answer with no technical depth"],
+      misconceptions: ["Contains keywords or terms but lacks an actual explanation"],
       nextAction: "probe",
     };
   }
