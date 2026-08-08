@@ -1,7 +1,7 @@
 /**
  * schemas/rag.schema.ts
  *
- * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage & Reports.
+ * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage & Retrieval.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -90,4 +90,36 @@ export const VectorStorageStatsSchema = z.object({
   dimensions: z.number().int().min(0),
   providerName: z.string().min(1),
   lastUpdated: z.string(),
+});
+
+// ---------------------------------------------------------------------------
+// Retrieval Architecture Schemas (Milestone 6.1)
+// ---------------------------------------------------------------------------
+
+export const RetrievalFilterSchema = z.object({
+  day: z.number().int().positive().optional(),
+  category: z.string().optional(),
+  difficulty: ConceptDifficultyLevelSchema.optional(),
+});
+
+export const RetrievalOptionsSchema = z.object({
+  topK: z.number().int().positive().optional(),
+  minScore: z.number().min(0).max(1).optional(),
+  filter: RetrievalFilterSchema.optional(),
+});
+
+export const RetrievedChunkSchema = z.object({
+  chunkId: z.string().min(1, "chunkId is required"),
+  content: z.string().min(1, "content is required"),
+  metadata: ChunkMetadataSchema,
+  score: z.number(),
+  retrievalSource: z.string().min(1, "retrievalSource is required"),
+});
+
+export const RetrievalResponseSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  results: z.array(RetrievedChunkSchema),
+  totalRetrieved: z.number().int().min(0),
+  durationMs: z.number().min(0),
+  retrievalSource: z.string().min(1),
 });

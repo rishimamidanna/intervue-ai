@@ -1,7 +1,7 @@
 /**
  * types/rag.ts
  *
- * RAG, Semantic Chunking, Embedding & Vector Storage Contracts (Milestone 4 & 5)
+ * RAG, Semantic Chunking, Embedding, Vector Storage & Retrieval Contracts (Milestone 4, 5 & 6.1)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
@@ -110,4 +110,38 @@ export interface VectorStorageStats {
   dimensions: number;
   providerName: string;
   lastUpdated: string;
+}
+
+// ---------------------------------------------------------------------------
+// Retrieval Architecture Contracts (Milestone 6.1)
+// ---------------------------------------------------------------------------
+
+export type RetrievalSource = "semantic" | "bm25" | "hybrid" | string;
+
+export interface RetrievalFilter {
+  day?: number;
+  category?: string;
+  difficulty?: ConceptDifficultyLevel;
+}
+
+export interface RetrievalOptions {
+  topK?: number;
+  minScore?: number;
+  filter?: RetrievalFilter;
+}
+
+export interface RetrievedChunk {
+  chunkId: string;
+  content: string;
+  metadata: ChunkMetadata;
+  score: number;
+  retrievalSource: RetrievalSource;
+}
+
+export interface RetrievalResponse {
+  query: string;
+  results: RetrievedChunk[];
+  totalRetrieved: number;
+  durationMs: number;
+  retrievalSource: RetrievalSource;
 }
