@@ -1,11 +1,10 @@
 /**
  * server/curriculum-service.ts
  *
- * Curriculum Data Service & Curriculum Normalizer (Milestone 3.1)
+ * Curriculum Data Service, Normalizer & Concept Extractor (Milestone 3.1 & 3.2)
  *
- * Loads, validates, indexes, and normalizes the hackathon curriculum JSON.
- * Provides typed, O(1) lookup of curriculum days and normalized document representations
- * prepared for future RAG / indexing.
+ * Loads, validates, indexes, normalizes, and extracts concepts from the hackathon curriculum JSON.
+ * Provides typed, O(1) lookups for raw curriculum, normalized curriculum documents, and individual concepts.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -15,10 +14,12 @@ import type {
   CurriculumIndex,
   NormalizedCurriculumItem,
   NormalizedCurriculumIndex,
+  CurriculumConcept,
 } from "@/types/curriculum";
 import {
   CurriculumArraySchema,
   NormalizedCurriculumItemSchema,
+  CurriculumConceptSchema,
 } from "@/schemas/curriculum.schema";
 import { safeValidate, strictValidate } from "@/lib/validation";
 
@@ -28,6 +29,7 @@ import { safeValidate, strictValidate } from "@/lib/validation";
 
 let _curriculumCache: CurriculumDay[] | null = null;
 let _normalizedCache: NormalizedCurriculumItem[] | null = null;
+let _extractedConceptsCache: CurriculumConcept[] | null = null;
 
 /**
  * Loads and validates the full curriculum as an ordered array.
@@ -210,10 +212,130 @@ export async function getNormalizedCurriculumDay(
   return index[day];
 }
 
+// ---------------------------------------------------------------------------
+// Curriculum Concept Extraction (Milestone 3.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Deterministically extracts concept units from a raw or normalized curriculum day.
+ * Maps keywords, preserves source day, source topic, module, tools, and description.
+ *
+ * @param dayItem - Raw CurriculumDay or NormalizedCurriculumItem
+ * @returns Array of CurriculumConcept objects
+ */
+export function extractConceptsFromDay(
+  dayItem: CurriculumDay | NormalizedCurriculumItem
+): CurriculumConcept[] {
+  const norm =
+    "sourceRef" in dayItem
+      ? (dayItem as NormalizedCurriculumItem)
+      : normalizeCurriculumDay(dayItem as CurriculumDay);
+
+  return norm.concepts.map((conceptName) => {
+    const slug = conceptName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const id = `concept-day-${norm.day}-${slug}`;
+
+    const keywordsSet = new Set<string>();
+
+    // 1. Concept name lowercased
+    keywordsSet.add(conceptName.toLowerCase());
+
+    // 2. Word tokens (>2 chars)
+    const words = conceptName
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 2);
+    for (const w of words) {
+      keywordsSet.add(w);
+    }
+
+    // 3. Topic name lowercased
+    keywordsSet.add(norm.topic.toLowerCase());
+
+    // 4. Tools associated with day
+    for (const tool of norm.tools) {
+      keywordsSet.add(tool.toLowerCase());
+    }
+
+    const relatedKeywords = Array.from(keywordsSet);
+
+    const description = `Concept '${conceptName}' covered on Day ${norm.day} (${norm.topic}) in module '${norm.module}'. Content context: ${norm.content}`;
+
+    const rawConcept: CurriculumConcept = {
+      id,
+      conceptName,
+      relatedKeywords,
+      sourceDay: norm.day,
+      sourceTopic: norm.topic,
+      module: norm.module,
+      tools: norm.tools,
+      description,
+    };
+
+    return strictValidate(
+      CurriculumConceptSchema,
+      rawConcept,
+      `Extracted Concept ${conceptName}`
+    );
+  });
+}
+
+/**
+ * Loads and extracts concepts across the entire curriculum.
+ * Cached in memory.
+ *
+ * @returns Array of CurriculumConcept objects
+ */
+export async function loadExtractedConcepts(): Promise<CurriculumConcept[]> {
+  if (_extractedConceptsCache) return _extractedConceptsCache;
+
+  const normalized = await loadNormalizedCurriculum();
+  _extractedConceptsCache = normalized.flatMap((item) =>
+    extractConceptsFromDay(item)
+  );
+  return _extractedConceptsCache;
+}
+
+/**
+ * Retrieves all concepts extracted for a given curriculum day number.
+ *
+ * @param day - Day number (1-indexed)
+ * @returns Array of CurriculumConcept objects
+ */
+export async function getConceptsByDay(
+  day: number
+): Promise<CurriculumConcept[]> {
+  const norm = await getNormalizedCurriculumDay(day);
+  if (!norm) return [];
+  return extractConceptsFromDay(norm);
+}
+
+/**
+ * Retrieves a concept by conceptName (case-insensitive search).
+ *
+ * @param name - Concept name or search string
+ * @returns CurriculumConcept or null if not found
+ */
+export async function getConceptByName(
+  name: string
+): Promise<CurriculumConcept | null> {
+  const concepts = await loadExtractedConcepts();
+  const searchLower = name.trim().toLowerCase();
+  return (
+    concepts.find(
+      (c) => c.conceptName.toLowerCase() === searchLower || c.id === name
+    ) ?? null
+  );
+}
+
 /**
  * Clears curriculum caches (useful for testing or dynamic reloads).
  */
 export function clearCurriculumCache(): void {
   _curriculumCache = null;
   _normalizedCache = null;
+  _extractedConceptsCache = null;
 }

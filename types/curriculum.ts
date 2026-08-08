@@ -1,7 +1,7 @@
 /**
  * types/curriculum.ts
  *
- * Curriculum structure & normalized curriculum contracts.
+ * Curriculum structure, normalized curriculum & extracted concept contracts.
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG) updated
  */
@@ -75,3 +75,24 @@ export interface NormalizedCurriculumItem {
 }
 
 export type NormalizedCurriculumIndex = Record<number, NormalizedCurriculumItem>;
+
+// ---------------------------------------------------------------------------
+// Curriculum Concept Unit (Milestone 3.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Concept-level understanding extracted from normalized curriculum.
+ * Preserves concept name, related keywords, source day, source topic, module, tools, and description.
+ */
+export interface CurriculumConcept {
+  id: string;
+  conceptName: string;
+  relatedKeywords: string[];
+  sourceDay: number;
+  sourceTopic: string;
+  module: string;
+  tools: string[];
+  description: string;
+}
+
+export type ConceptIndex = Record<string, CurriculumConcept>;

@@ -1,7 +1,7 @@
 /**
  * schemas/curriculum.schema.ts
  *
- * Zod validation schema for Curriculum Day & Normalized Curriculum data.
+ * Zod validation schema for Curriculum Day, Normalized Curriculum & Concept data.
  * Ensures curriculum items loaded from curriculum.json adhere to expected specifications.
  *
  * Owner: Member 2 (Data + RAG)
@@ -75,3 +75,20 @@ export const NormalizedCurriculumItemSchema = z.object({
 });
 
 export const NormalizedCurriculumArraySchema = z.array(NormalizedCurriculumItemSchema);
+
+// ---------------------------------------------------------------------------
+// Curriculum Concept Extraction Schemas (Milestone 3.2)
+// ---------------------------------------------------------------------------
+
+export const CurriculumConceptSchema = z.object({
+  id: z.string().min(1, "Concept ID is required"),
+  conceptName: z.string().min(1, "conceptName is required"),
+  relatedKeywords: z.array(z.string()).min(1, "relatedKeywords must contain at least one keyword"),
+  sourceDay: z.number().int().min(1, "sourceDay must be a positive integer"),
+  sourceTopic: z.string().min(1, "sourceTopic is required"),
+  module: z.string().min(1, "module is required"),
+  tools: z.array(z.string()),
+  description: z.string().min(1, "description is required"),
+});
+
+export const CurriculumConceptArraySchema = z.array(CurriculumConceptSchema);
