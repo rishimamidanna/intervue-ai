@@ -3,25 +3,27 @@
  *
  * Curriculum Data Service
  *
- * Loads and indexes the hackathon curriculum JSON. Delegates validation
- * and normalization to the Data Loading Layer (lib/loaders/curriculum-loader).
- * Provides typed, O(1) lookup of curriculum days for AI modules and Interview Controller.
+ * Loads and indexes the hackathon curriculum JSON. Delegates validation,
+ * normalization, and knowledge unit processing to Data Loaders and Processors.
+ * Provides typed, O(1) lookup of curriculum days and knowledge units for AI modules.
  *
  * Owner: Member 2 (Backend / API)
  */
 
-import type { CurriculumDay, CurriculumIndex } from "@/types/curriculum";
+import type { CurriculumDay, CurriculumIndex, CurriculumKnowledgeUnit } from "@/types/curriculum";
 import {
   loadCurriculum as loadCurriculumData,
   getCurriculumIndex as getIndexFromLoader,
   getCurriculumDay as getDayFromLoader,
 } from "@/lib/loaders/curriculum-loader";
+import { processCurriculumData } from "@/lib/processors/curriculum-processor";
 
 // ---------------------------------------------------------------------------
 // Data Loading Cache
 // ---------------------------------------------------------------------------
 
 let _curriculumCache: CurriculumDay[] | null = null;
+let _unitsCache: CurriculumKnowledgeUnit[] | null = null;
 
 /**
  * Loads and returns the full curriculum as an ordered array of CurriculumDay objects.
@@ -36,6 +38,19 @@ export async function loadCurriculum(): Promise<CurriculumDay[]> {
   const curriculumData = await loadCurriculumData();
   _curriculumCache = curriculumData.days;
   return _curriculumCache;
+}
+
+/**
+ * Returns processed curriculum knowledge units ready for search/retrieval indexing.
+ *
+ * @returns CurriculumKnowledgeUnit[]
+ */
+export async function getProcessedCurriculum(): Promise<CurriculumKnowledgeUnit[]> {
+  if (_unitsCache) return _unitsCache;
+
+  const curriculumData = await loadCurriculumData();
+  _unitsCache = processCurriculumData(curriculumData);
+  return _unitsCache;
 }
 
 /**
@@ -65,4 +80,5 @@ export async function getCurriculumDay(
  */
 export function clearCurriculumCache(): void {
   _curriculumCache = null;
+  _unitsCache = null;
 }
