@@ -2,9 +2,10 @@
  * server/chunking-service.ts
  *
  * Curriculum-Aware Semantic Chunk Generator & Chunk Quality Validation Engine (Milestone 4.1, 4.2 & 4.3)
+ * Advanced Metadata Enrichment (Milestone 7.5)
  *
  * Generates meaningful, curriculum-aware semantic chunks following strict
- * Day -> Topic -> Concept boundaries prepared for vector embeddings and BM25 keyword search.
+ * Day -> Topic -> Concept boundaries prepared for vector embeddings, BM25 keyword search, and advanced metadata filtering.
  * Provides a quality validation layer enforcing required fields, content/metadata quality, and duplicate detection.
  *
  * Owner: Member 2 (Data + RAG)
@@ -31,7 +32,7 @@ let _chunksCache: CurriculumChunk[] | null = null;
 
 /**
  * Builds a strongly typed, schema-validated CurriculumChunk from an enriched concept
- * and text content snippet.
+ * and text content snippet with advanced metadata intelligence.
  *
  * @param concept - EnrichedCurriculumConcept metadata source
  * @param contentChunk - Text content for this chunk
@@ -52,6 +53,10 @@ export function buildChunkFromConcept(
     keywords: concept.keywords,
     category: concept.category,
     difficulty: concept.difficultyLevel,
+    concept: concept.conceptName,
+    skillCategory: concept.module,
+    prerequisites: concept.relatedConcepts.slice(0, 2),
+    relatedConcepts: concept.relatedConcepts,
     sourceRef: {
       file: concept.sourceMapping.file,
       day: concept.sourceMapping.day,

@@ -1,7 +1,7 @@
 /**
  * schemas/rag.schema.ts
  *
- * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage, Hybrid Retrieval, Candidate Ranking, Context Builder & Prompt Context Builder.
+ * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage, Vector Insertion Pipeline, Hybrid Retrieval, Candidate Ranking, Context Builder, Prompt Context Builder, Explainability, Confidence, Context Quality Optimization & RAG Evaluation Framework.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -18,8 +18,12 @@ export const ChunkMetadataSchema = z
     category: z.string().min(1, "Category is required"),
     difficulty: ConceptDifficultyLevelSchema,
     sourceRef: CurriculumSourceRefSchema,
+    concept: z.string().optional(),
+    skillCategory: z.string().optional(),
+    prerequisites: z.array(z.string()).optional(),
+    relatedConcepts: z.array(z.string()).optional(),
     chunkIndex: z.number().int().min(0).optional(),
-    totalChunks: z.number().int().min(1).optional(),
+    totalChunks: z.number().int().min(0).optional(),
   })
   .passthrough();
 
@@ -73,7 +77,7 @@ export const VectorEmbeddingSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Vector Storage Schemas (Milestone 5.3)
+// Vector Storage Schemas (Milestone 5.3 & 5.4)
 // ---------------------------------------------------------------------------
 
 export const VectorRecordSchema = z.object({
@@ -93,13 +97,30 @@ export const VectorStorageStatsSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Vector Insertion Pipeline Schemas (Milestone 5.5)
+// ---------------------------------------------------------------------------
+
+export const VectorInsertionReportSchema = z.object({
+  totalSubmitted: z.number().int().min(0),
+  totalInserted: z.number().int().min(0),
+  duplicateCount: z.number().int().min(0),
+  batchCount: z.number().int().min(0),
+  durationMs: z.number().min(0),
+  timestamp: z.string(),
+});
+
+// ---------------------------------------------------------------------------
 // Retrieval Architecture, Hybrid Fusion & Candidate Ranking Schemas (Milestones 6.1 - 6.5)
 // ---------------------------------------------------------------------------
 
 export const RetrievalFilterSchema = z.object({
   day: z.number().int().positive().optional(),
   category: z.string().optional(),
+  skillCategory: z.string().optional(),
   difficulty: ConceptDifficultyLevelSchema.optional(),
+  concept: z.string().optional(),
+  prerequisite: z.string().optional(),
+  relatedConcept: z.string().optional(),
 });
 
 export const HybridConfigSchema = z.object({
@@ -191,4 +212,113 @@ export const LLMPromptPayloadSchema = z.object({
   systemPrompt: z.string().min(1, "systemPrompt is required"),
   userPrompt: z.string().min(1, "userPrompt is required"),
   metadata: LLMPromptMetadataSchema,
+});
+
+// ---------------------------------------------------------------------------
+// Retrieval Explainability Schemas (Milestone 7.3)
+// ---------------------------------------------------------------------------
+
+export const DetailedRetrievalScoresSchema = z.object({
+  semantic: z.number(),
+  bm25: z.number(),
+  candidate: z.number(),
+  final: z.number(),
+});
+
+export const ExplainedRetrievedChunkSchema = z.object({
+  chunkId: z.string().min(1, "chunkId is required"),
+  content: z.string().min(1, "content is required"),
+  metadata: ChunkMetadataSchema,
+  scores: DetailedRetrievalScoresSchema,
+  reasons: z.array(z.string()),
+  retrievalSource: z.string().min(1, "retrievalSource is required"),
+  sources: z.array(z.string()).optional(),
+});
+
+export const ExplainedRetrievalResponseSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  results: z.array(ExplainedRetrievedChunkSchema),
+  totalRetrieved: z.number().int().min(0),
+  durationMs: z.number().min(0),
+  retrievalSource: z.string().min(1),
+});
+
+// ---------------------------------------------------------------------------
+// Retrieval Confidence Scoring Schemas (Milestone 7.4)
+// ---------------------------------------------------------------------------
+
+export const RetrievalConfidenceLevelSchema = z.enum(["high", "medium", "low"]);
+
+export const RetrievalConfidenceMetricsSchema = z.object({
+  averageScore: z.number(),
+  topScore: z.number(),
+  sourceCount: z.number().int().min(0),
+  scoreVariance: z.number(),
+});
+
+export const RetrievalConfidenceAnalysisSchema = z.object({
+  confidence: RetrievalConfidenceLevelSchema,
+  confidenceScore: z.number().min(0).max(1),
+  metrics: RetrievalConfidenceMetricsSchema,
+  reasons: z.array(z.string()),
+});
+
+// ---------------------------------------------------------------------------
+// Context Quality Optimization Schemas (Milestone 7.6)
+// ---------------------------------------------------------------------------
+
+export const ContextRemovalReasonSchema = z.enum([
+  "duplicate_id",
+  "duplicate_content",
+  "irrelevant_score",
+  "max_chunks_limit",
+  "max_length_limit",
+]);
+
+export const RemovedChunkDetailSchema = z.object({
+  chunkId: z.string().min(1, "chunkId is required"),
+  reason: ContextRemovalReasonSchema,
+  score: z.number(),
+  contentSnippet: z.string(),
+});
+
+export const ContextOptimizerOptionsSchema = z.object({
+  minRelevanceScore: z.number().min(0).optional(),
+  maxChunks: z.number().int().positive().optional(),
+  maxContextLength: z.number().int().positive().optional(),
+  headerPrefix: z.string().optional(),
+  headerStyle: z.enum(["colon", "brackets"]).optional(),
+});
+
+export const OptimizedContextResponseSchema = z.object({
+  context: z.string(),
+  sources: z.array(ContextSourceReferenceSchema),
+  removedChunks: z.array(RemovedChunkDetailSchema),
+  totalChunksOriginal: z.number().int().min(0),
+  totalChunksUsed: z.number().int().min(0),
+  characterCount: z.number().int().min(0),
+  truncated: z.boolean(),
+});
+
+// ---------------------------------------------------------------------------
+// RAG Evaluation Framework Schemas (Milestone 7.7)
+// ---------------------------------------------------------------------------
+
+export const RAGEvaluationMetricsSchema = z.object({
+  topScore: z.number(),
+  lowestScore: z.number(),
+  duplicateCount: z.number().int().min(0),
+  irrelevantCount: z.number().int().min(0),
+  scoreVariance: z.number(),
+});
+
+export const EvaluationResultSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  averageScore: z.number().min(0).max(1),
+  topKAccuracy: z.number().min(0).max(1),
+  sourcesUsed: z.number().int().min(0),
+  confidence: RetrievalConfidenceLevelSchema,
+  contextRelevanceScore: z.number().min(0).max(1),
+  metrics: RAGEvaluationMetricsSchema,
+  timestamp: z.string(),
 });

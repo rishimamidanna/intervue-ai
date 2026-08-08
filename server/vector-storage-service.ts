@@ -12,13 +12,15 @@
  * Owner: Member 2 (Data + RAG)
  */
 
-import type { VectorEmbedding } from "@/types/rag";
+import type { VectorEmbedding, RetrievalFilter } from "@/types/rag";
 import type { VectorRecord, VectorStorageStats } from "@/types/rag";
 import {
   VectorRecordSchema,
   VectorStorageStatsSchema,
 } from "@/schemas/rag.schema";
 import { strictValidate } from "@/lib/validation";
+import { ChromaVectorStore } from "./chroma-vector-store";
+import { defaultVectorDBConfig } from "@/config/vector-db.config";
 
 // ---------------------------------------------------------------------------
 // Vector Storage Abstraction Contract
@@ -36,6 +38,11 @@ export interface IVectorStore {
   deleteRecord(chunkId: string): Promise<boolean>;
   clear(): Promise<void>;
   getStats(): Promise<VectorStorageStats>;
+  queryVector?(
+    queryVector: number[],
+    topK?: number,
+    filter?: RetrievalFilter
+  ): Promise<VectorRecord[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +141,11 @@ export class VectorStorageService {
   private store: IVectorStore;
 
   constructor(store?: IVectorStore) {
-    this.store = store || new InMemoryVectorStore();
+    this.store =
+      store ||
+      (defaultVectorDBConfig.provider === "in-memory"
+        ? new InMemoryVectorStore()
+        : new ChromaVectorStore());
   }
 
   /**
@@ -224,6 +235,20 @@ export class VectorStorageService {
    */
   async clear(): Promise<void> {
     return this.store.clear();
+  }
+
+  /**
+   * Queries vector DB store for vector similarity.
+   */
+  async queryVector(
+    queryVector: number[],
+    topK?: number,
+    filter?: RetrievalFilter
+  ): Promise<VectorRecord[]> {
+    if (this.store.queryVector) {
+      return this.store.queryVector(queryVector, topK, filter);
+    }
+    return this.store.getAllRecords();
   }
 }
 

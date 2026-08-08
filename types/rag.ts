@@ -1,7 +1,7 @@
 /**
  * types/rag.ts
  *
- * RAG, Semantic Chunking, Embedding, Vector Storage, Retrieval, Hybrid Fusion, Candidate Ranking, Context & Prompt Builder Contracts (Milestones 4 - 7)
+ * RAG, Semantic Chunking, Embedding, Vector Storage, Vector Insertion Pipeline, Hybrid Fusion, Candidate Ranking, Context Builder, Prompt Context Builder, Explainability, Confidence, Metadata, Context Quality Optimization & RAG Evaluation Contracts (Milestones 4 - 7)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
@@ -10,14 +10,18 @@ import type { ConceptDifficultyLevel, CurriculumSourceRef } from "./curriculum";
 import type { CandidateProfile, CandidateIntelligenceProfile } from "./candidate";
 
 /**
- * Metadata associated with a curriculum-aware semantic chunk.
- * Preserves keywords, category, difficulty, source reference, and chunk index tracking.
+ * Advanced metadata associated with a curriculum-aware semantic chunk.
+ * Preserves keywords, category, difficulty, concept name, skill category, prerequisites, related concepts, source reference, and chunk index tracking.
  */
 export interface ChunkMetadata {
   keywords: string[];
   category: string;
   difficulty: ConceptDifficultyLevel;
   sourceRef: CurriculumSourceRef;
+  concept?: string;
+  skillCategory?: string;
+  prerequisites?: string[];
+  relatedConcepts?: string[];
   chunkIndex?: number;
   totalChunks?: number;
   [key: string]: unknown;
@@ -94,7 +98,7 @@ export interface EmbeddingResult {
 }
 
 // ---------------------------------------------------------------------------
-// Vector Storage Architecture Contracts (Milestone 5.3)
+// Vector Storage Architecture Contracts (Milestone 5.3 & 5.4)
 // ---------------------------------------------------------------------------
 
 export interface VectorRecord {
@@ -114,6 +118,19 @@ export interface VectorStorageStats {
 }
 
 // ---------------------------------------------------------------------------
+// Vector Insertion Pipeline Contracts (Milestone 5.5)
+// ---------------------------------------------------------------------------
+
+export interface VectorInsertionReport {
+  totalSubmitted: number;
+  totalInserted: number;
+  duplicateCount: number;
+  batchCount: number;
+  durationMs: number;
+  timestamp: string;
+}
+
+// ---------------------------------------------------------------------------
 // Retrieval Architecture, Hybrid Fusion & Candidate Ranking Contracts (Milestones 6.1 - 6.5)
 // ---------------------------------------------------------------------------
 
@@ -122,7 +139,11 @@ export type RetrievalSource = "semantic" | "bm25" | "hybrid" | "candidate-aware"
 export interface RetrievalFilter {
   day?: number;
   category?: string;
+  skillCategory?: string;
   difficulty?: ConceptDifficultyLevel;
+  concept?: string;
+  prerequisite?: string;
+  relatedConcept?: string;
 }
 
 export interface HybridConfig {
@@ -223,4 +244,112 @@ export interface LLMPromptPayload {
   systemPrompt: string;
   userPrompt: string;
   metadata: LLMPromptMetadata;
+}
+
+// ---------------------------------------------------------------------------
+// Retrieval Explainability Contracts (Milestone 7.3)
+// ---------------------------------------------------------------------------
+
+export interface DetailedRetrievalScores {
+  semantic: number;
+  bm25: number;
+  candidate: number;
+  final: number;
+}
+
+export interface ExplainedRetrievedChunk {
+  chunkId: string;
+  content: string;
+  metadata: ChunkMetadata;
+  scores: DetailedRetrievalScores;
+  reasons: string[];
+  retrievalSource: RetrievalSource;
+  sources?: RetrievalSource[];
+}
+
+export interface ExplainedRetrievalResponse {
+  query: string;
+  results: ExplainedRetrievedChunk[];
+  totalRetrieved: number;
+  durationMs: number;
+  retrievalSource: RetrievalSource;
+}
+
+// ---------------------------------------------------------------------------
+// Retrieval Confidence Scoring Contracts (Milestone 7.4)
+// ---------------------------------------------------------------------------
+
+export type RetrievalConfidenceLevel = "high" | "medium" | "low";
+
+export interface RetrievalConfidenceMetrics {
+  averageScore: number;
+  topScore: number;
+  sourceCount: number;
+  scoreVariance: number;
+}
+
+export interface RetrievalConfidenceAnalysis {
+  confidence: RetrievalConfidenceLevel;
+  confidenceScore: number;
+  metrics: RetrievalConfidenceMetrics;
+  reasons: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Context Quality Optimization Contracts (Milestone 7.6)
+// ---------------------------------------------------------------------------
+
+export type ContextRemovalReason =
+  | "duplicate_id"
+  | "duplicate_content"
+  | "irrelevant_score"
+  | "max_chunks_limit"
+  | "max_length_limit";
+
+export interface RemovedChunkDetail {
+  chunkId: string;
+  reason: ContextRemovalReason;
+  score: number;
+  contentSnippet: string;
+}
+
+export interface ContextOptimizerOptions {
+  minRelevanceScore?: number;
+  maxChunks?: number;
+  maxContextLength?: number;
+  headerPrefix?: string;
+  headerStyle?: "colon" | "brackets";
+}
+
+export interface OptimizedContextResponse {
+  context: string;
+  sources: ContextSourceReference[];
+  removedChunks: RemovedChunkDetail[];
+  totalChunksOriginal: number;
+  totalChunksUsed: number;
+  characterCount: number;
+  truncated: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// RAG Evaluation Framework Contracts (Milestone 7.7)
+// ---------------------------------------------------------------------------
+
+export interface RAGEvaluationMetrics {
+  topScore: number;
+  lowestScore: number;
+  duplicateCount: number;
+  irrelevantCount: number;
+  scoreVariance: number;
+}
+
+export interface EvaluationResult {
+  query: string;
+  averageScore: number;
+  topKAccuracy: number;
+  sourcesUsed: number;
+  confidence: RetrievalConfidenceLevel;
+  contextRelevanceScore: number;
+  metrics: RAGEvaluationMetrics;
+  timestamp: string;
 }

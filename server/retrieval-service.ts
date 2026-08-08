@@ -17,6 +17,7 @@ import type {
   RetrievalResponse,
   RetrievalOptions,
   RetrievalSource,
+  RetrievalFilter,
   ChunkMetadata,
   CurriculumChunk,
   HybridConfig,
@@ -34,12 +35,13 @@ import {
   EmbeddingService,
   defaultEmbeddingService,
   generateAllCurriculumEmbeddings,
+  clearEmbeddingCache,
 } from "./embedding-service";
 import {
   VectorStorageService,
   defaultVectorStorageService,
 } from "./vector-storage-service";
-import { generateAllCurriculumChunks } from "./chunking-service";
+import { generateAllCurriculumChunks, clearChunkCache } from "./chunking-service";
 
 // ---------------------------------------------------------------------------
 // Math Utility: Cosine Similarity
@@ -124,6 +126,62 @@ export function tokenize(text: string): string[] {
     .replace(/[^\w\s-]/g, " ")
     .split(/\s+/)
     .filter((term) => term.length > 1 && !STOP_WORDS.has(term));
+}
+
+/**
+ * Evaluates whether a chunk metadata object satisfies a given RetrievalFilter.
+ *
+ * @param metadata - ChunkMetadata
+ * @param filter - RetrievalFilter predicate
+ * @returns boolean
+ */
+export function matchesRetrievalFilter(
+  metadata: ChunkMetadata,
+  filter?: RetrievalFilter
+): boolean {
+  if (!filter) return true;
+
+  if (typeof filter.day === "number" && metadata.sourceRef?.day !== filter.day) {
+    return false;
+  }
+  if (
+    filter.category &&
+    metadata.category?.toLowerCase() !== filter.category.toLowerCase()
+  ) {
+    return false;
+  }
+  if (
+    filter.skillCategory &&
+    metadata.skillCategory?.toLowerCase() !== filter.skillCategory.toLowerCase()
+  ) {
+    return false;
+  }
+  if (filter.difficulty && metadata.difficulty !== filter.difficulty) {
+    return false;
+  }
+  if (
+    filter.concept &&
+    (!metadata.concept ||
+      !metadata.concept.toLowerCase().includes(filter.concept.toLowerCase()))
+  ) {
+    return false;
+  }
+  if (filter.prerequisite) {
+    const prereqSearch = filter.prerequisite.toLowerCase();
+    const hasMatch = metadata.prerequisites?.some((p) =>
+      p.toLowerCase().includes(prereqSearch)
+    );
+    if (!hasMatch) return false;
+  }
+  if (filter.relatedConcept) {
+    const relatedSearch = filter.relatedConcept.toLowerCase();
+    const hasMatch = metadata.relatedConcepts?.some((r) =>
+      r.toLowerCase().includes(relatedSearch)
+    );
+    if (!hasMatch) return false;
+  }
+
+  return true;
 }
 
 /**
@@ -214,23 +272,9 @@ export class BM25Index {
 
     let candidateChunks = this.chunks;
     if (filter) {
-      if (typeof filter.day === "number") {
-        candidateChunks = candidateChunks.filter(
-          (c) => c.metadata.sourceRef.day === filter.day
-        );
-      }
-      if (filter.category) {
-        candidateChunks = candidateChunks.filter(
-          (c) =>
-            c.metadata.category.toLowerCase() ===
-            filter.category!.toLowerCase()
-        );
-      }
-      if (filter.difficulty) {
-        candidateChunks = candidateChunks.filter(
-          (c) => c.metadata.difficulty === filter.difficulty
-        );
-      }
+      candidateChunks = candidateChunks.filter((c) =>
+        matchesRetrievalFilter(c.metadata, filter)
+      );
     }
 
     const scoredResults: RetrievedChunk[] = candidateChunks.map((chunk) => {
@@ -309,6 +353,13 @@ export class SemanticRetrievalProvider implements IRetrievalProvider {
   }
 
   /**
+   * Resets vector storage service reference if needed.
+   */
+  reset(): void {
+    // Vector storage cleared independently
+  }
+
+  /**
    * Performs semantic similarity retrieval for a given query string.
    */
   async retrieve(
@@ -345,26 +396,18 @@ export class SemanticRetrievalProvider implements IRetrievalProvider {
     const queryEmbedding = await this.embeddingService.embed(queryChunk);
     const queryVector = queryEmbedding.vector;
 
-    // 3. Filter candidates if metadata filter options are specified
-    let candidates = storedRecords;
+    // 3. Query Vector DB Store (ChromaDB Similarity Search)
+    const storedCandidates = await this.vectorStorageService.queryVector(
+      queryVector,
+      topK,
+      filter
+    );
+
+    let candidates = storedCandidates.length > 0 ? storedCandidates : storedRecords;
     if (filter) {
-      if (typeof filter.day === "number") {
-        candidates = candidates.filter(
-          (r) => r.metadata.sourceRef.day === filter.day
-        );
-      }
-      if (filter.category) {
-        candidates = candidates.filter(
-          (r) =>
-            r.metadata.category.toLowerCase() ===
-            filter.category!.toLowerCase()
-        );
-      }
-      if (filter.difficulty) {
-        candidates = candidates.filter(
-          (r) => r.metadata.difficulty === filter.difficulty
-        );
-      }
+      candidates = candidates.filter((r) =>
+        matchesRetrievalFilter(r.metadata, filter)
+      );
     }
 
     // 4. Calculate similarity scores and rank candidates
@@ -402,6 +445,14 @@ export class BM25RetrievalProvider implements IRetrievalProvider {
 
   private bm25Index = new BM25Index();
   private isIndexed = false;
+
+  /**
+   * Reset BM25 index state to force re-indexing on next retrieval call.
+   */
+  reset(): void {
+    this.isIndexed = false;
+    this.bm25Index = new BM25Index();
+  }
 
   /**
    * Ensures the curriculum chunks are tokenized and indexed into the BM25 engine.
@@ -489,6 +540,14 @@ export class HybridRetrievalProvider implements IRetrievalProvider {
       bm25Weight: 0.3,
       fetchTopK: 20,
     };
+  }
+
+  /**
+   * Resets underlying semantic and BM25 providers.
+   */
+  reset(): void {
+    this.semanticProvider.reset();
+    this.bm25Provider.reset();
   }
 
   /**
@@ -585,7 +644,7 @@ export class HybridRetrievalProvider implements IRetrievalProvider {
 
     // 5. Filter & Final Ranking
     const rankedResults = fusedResults
-      .filter((r) => r.score >= minScore)
+      .filter((r) => matchesRetrievalFilter(r.metadata, options?.filter) && r.score >= minScore)
       .sort((a, b) => b.score - a.score);
 
     return rankedResults.slice(0, topK);
@@ -803,7 +862,7 @@ export class CandidateAwareRetrievalProvider implements IRetrievalProvider {
 
     // 3. Final Ranking by finalScore descending
     const ranked = personalizedResults
-      .filter((r) => r.finalScore >= minScore)
+      .filter((r) => matchesRetrievalFilter(r.metadata, options?.filter) && r.finalScore >= minScore)
       .sort((a, b) => b.finalScore - a.finalScore);
 
     return ranked.slice(0, topK);
@@ -854,6 +913,17 @@ export class RetrievalService {
     } else {
       this.activeProvider = providerNameOrInstance;
       this.registerProvider(providerNameOrInstance);
+    }
+  }
+
+  /**
+   * Resets state of all registered providers.
+   */
+  reset(): void {
+    for (const provider of Array.from(this.registeredProviders.values())) {
+      if ("reset" in provider && typeof (provider as unknown as { reset: () => void }).reset === "function") {
+        (provider as unknown as { reset: () => void }).reset();
+      }
     }
   }
 
@@ -930,10 +1000,13 @@ export const defaultRetrievalService = new RetrievalService();
  */
 export async function performSemanticSearch(
   query: string,
-  options?: RetrievalOptions | number
+  options?: RetrievalOptions | number,
+  extraOptions?: RetrievalOptions
 ): Promise<RetrievedChunk[] & RetrievalResponse> {
   const opts: RetrievalOptions =
-    typeof options === "number" ? { topK: options } : options || {};
+    typeof options === "number"
+      ? { topK: options, ...extraOptions }
+      : options || {};
 
   const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
   if (currentProviderInfo.sourceType !== "semantic") {
@@ -953,21 +1026,15 @@ export async function performSemanticSearch(
   return resultsArray;
 }
 
-/**
- * Convenience helper executing BM25 Okapi keyword retrieval using defaultRetrievalService.
- * Supports both RetrievalOptions object or direct topK number.
- * Returns retrieved chunks array decorated with full RetrievalResponse metadata.
- *
- * @param query - User query string
- * @param options - Optional RetrievalOptions object or numeric topK
- * @returns Array of RetrievedChunk objects extended with RetrievalResponse metadata
- */
 export async function performBM25Search(
   query: string,
-  options?: RetrievalOptions | number
+  options?: RetrievalOptions | number,
+  extraOptions?: RetrievalOptions
 ): Promise<RetrievedChunk[] & RetrievalResponse> {
   const opts: RetrievalOptions =
-    typeof options === "number" ? { topK: options } : options || {};
+    typeof options === "number"
+      ? { topK: options, ...extraOptions }
+      : options || {};
 
   const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
   defaultRetrievalService.setProvider("bm25");
@@ -988,21 +1055,15 @@ export async function performBM25Search(
   return resultsArray;
 }
 
-/**
- * Convenience helper executing Hybrid Retrieval Fusion using defaultRetrievalService.
- * Supports both RetrievalOptions object or direct topK number.
- * Returns retrieved chunks array decorated with full RetrievalResponse metadata.
- *
- * @param query - User query string
- * @param options - Optional RetrievalOptions object or numeric topK
- * @returns Array of RetrievedChunk objects extended with RetrievalResponse metadata
- */
 export async function performHybridSearch(
   query: string,
-  options?: RetrievalOptions | number
+  options?: RetrievalOptions | number,
+  extraOptions?: RetrievalOptions
 ): Promise<RetrievedChunk[] & RetrievalResponse> {
   const opts: RetrievalOptions =
-    typeof options === "number" ? { topK: options } : options || {};
+    typeof options === "number"
+      ? { topK: options, ...extraOptions }
+      : options || {};
 
   const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
   defaultRetrievalService.setProvider("hybrid");
@@ -1023,25 +1084,16 @@ export async function performHybridSearch(
   return resultsArray;
 }
 
-/**
- * Convenience helper executing Candidate-Aware Personalized Retrieval using defaultRetrievalService.
- * Supports both RetrievalOptions object or direct topK number.
- * Returns candidate-aware retrieved chunks array decorated with full RetrievalResponse metadata.
- *
- * @param query - User query string
- * @param candidateProfile - CandidateProfile, CandidateIntelligenceProfile, or generic candidate object
- * @param options - Optional RetrievalOptions object or numeric topK
- * @returns Array of CandidateAwareRetrievedChunk objects extended with RetrievalResponse metadata
- */
 export async function performCandidateAwareSearch(
   query: string,
   candidateProfile: CandidateProfile | CandidateIntelligenceProfile | Record<string, unknown>,
-  options?: RetrievalOptions | number
+  options?: RetrievalOptions | number,
+  extraOptions?: RetrievalOptions
 ): Promise<CandidateAwareRetrievedChunk[] & RetrievalResponse> {
   const opts: RetrievalOptions =
     typeof options === "number"
-      ? { topK: options, candidateProfile: candidateProfile as CandidateProfile }
-      : { ...options, candidateProfile: candidateProfile as CandidateProfile };
+      ? { topK: options, ...extraOptions, candidateProfile: candidateProfile as CandidateProfile }
+      : { ...options, ...extraOptions, candidateProfile: candidateProfile as CandidateProfile };
 
   const currentProviderInfo = defaultRetrievalService.getActiveProviderInfo();
   defaultRetrievalService.setProvider("candidate-aware");
@@ -1060,4 +1112,20 @@ export async function performCandidateAwareSearch(
   resultsArray.retrievalSource = response.retrievalSource;
 
   return resultsArray;
+}
+
+/**
+ * Singleton instance of default BM25RetrievalProvider.
+ */
+export const defaultBM25Provider = new BM25RetrievalProvider();
+
+/**
+ * Resets all in-memory retrieval, chunking, embedding, and vector storage caches.
+ */
+export async function resetAllRetrievalCaches(): Promise<void> {
+  clearChunkCache();
+  clearEmbeddingCache();
+  await defaultVectorStorageService.clear();
+  defaultBM25Provider.reset();
+  defaultRetrievalService.reset();
 }
