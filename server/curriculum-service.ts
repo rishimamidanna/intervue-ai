@@ -93,6 +93,100 @@ export async function getCurriculumDay(
   return index[day];
 }
 
+// ---------------------------------------------------------------------------
+// Retrieval Layer
+// ---------------------------------------------------------------------------
+
+export interface RetrievedCurriculumContext {
+  relevantTopic: string;
+  learningObjectives: string[];
+  keyConcepts: string[];
+  relatedConcepts: string[];
+  difficultyContext: string;
+  matchedDays: CurriculumDay[];
+}
+
+/**
+ * Retrieves relevant curriculum concepts, objectives, and related topics
+ * based on candidate state (topic, knowledge gaps, difficulty).
+ *
+ * @param queryTopic - Target curriculum topic
+ * @param gaps - List of candidate knowledge gaps
+ * @param currentDifficulty - Current difficulty level (1–5 or 1–10)
+ * @param curriculumDays - Loaded curriculum days array
+ * @returns Structured RetrievedCurriculumContext
+ */
+export function retrieveCurriculumContext(
+  queryTopic: string,
+  gaps: string[] = [],
+  currentDifficulty: number = 3,
+  curriculumDays: CurriculumDay[] = []
+): RetrievedCurriculumContext {
+  const cleanQuery = `${queryTopic} ${gaps.join(" ")}`.toLowerCase();
+  const searchTerms = cleanQuery
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
+
+  const scoredDays = curriculumDays.map((day) => {
+    let score = 0;
+    const dayText = `${day.topic} ${day.concepts.join(" ")} ${day.learningObjectives.join(" ")} ${day.tools.join(" ")}`.toLowerCase();
+
+    // Direct topic match
+    if (
+      day.topic.toLowerCase().includes(queryTopic.toLowerCase()) ||
+      queryTopic.toLowerCase().includes(day.topic.toLowerCase())
+    ) {
+      score += 15;
+    }
+
+    // Gap match
+    for (const gap of gaps) {
+      if (dayText.includes(gap.toLowerCase())) {
+        score += 10;
+      }
+    }
+
+    // Search terms overlap
+    for (const term of searchTerms) {
+      if (dayText.includes(term)) {
+        score += 2;
+      }
+    }
+
+    return { day, score };
+  });
+
+  scoredDays.sort((a, b) => b.score - a.score);
+  const primaryDay = scoredDays[0]?.day || curriculumDays[0];
+  const topMatchedDays = scoredDays.slice(0, 3).map((sd) => sd.day);
+
+  // Gather primary & related concepts
+  const keyConcepts = primaryDay?.concepts ?? [];
+  const relatedConcepts = Array.from(
+    new Set(
+      topMatchedDays
+        .flatMap((d) => d.concepts)
+        .filter((c) => !keyConcepts.includes(c))
+    )
+  ).slice(0, 6);
+
+  const difficultyContext =
+    currentDifficulty >= 4
+      ? "Advanced system design, edge cases, trade-offs, and optimization strategies"
+      : currentDifficulty >= 3
+      ? "Practical implementation, application scenarios, and standard patterns"
+      : "Foundational definitions, core concepts, and basic mechanics";
+
+  return {
+    relevantTopic: primaryDay?.topic ?? queryTopic,
+    learningObjectives: primaryDay?.learningObjectives ?? [],
+    keyConcepts,
+    relatedConcepts,
+    difficultyContext,
+    matchedDays: topMatchedDays,
+  };
+}
+
 /**
  * Clears the curriculum cache (useful for testing).
  */

@@ -11,7 +11,80 @@
  */
 
 import type { AnswerEvaluation, InterviewQuestion, InterviewState } from "@/types/interview";
+import type { RetrievedCurriculumContext } from "@/server/curriculum-service";
 import { createJsonCompletion } from "@/lib/llm";
+
+// ---------------------------------------------------------------------------
+// Validation Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Checks if the candidate answer is repeating or echoing the question text.
+ */
+function checkQuestionRepetition(answer: string, questionText: string): boolean {
+  const normAns = answer.trim().toLowerCase().replace(/[^\w\s]/g, "");
+  const normQ = questionText.trim().toLowerCase().replace(/[^\w\s]/g, "");
+
+  if (normAns.length === 0) return true;
+
+  // Exact or near-exact match
+  if (normAns === normQ || normQ.includes(normAns) || normAns.includes(normQ)) {
+    if (Math.abs(normAns.length - normQ.length) < normQ.length * 0.45) {
+      return true;
+    }
+  }
+
+  // Word overlap comparison
+  const ansWords = normAns.split(/\s+/).filter((w) => w.length > 2);
+  const qWords = new Set(normQ.split(/\s+/).filter((w) => w.length > 2));
+
+  if (ansWords.length === 0) return true;
+
+  const overlapCount = ansWords.filter((w) => qWords.has(w)).length;
+  const overlapRatio = overlapCount / ansWords.length;
+  const newWords = ansWords.filter((w) => !qWords.has(w));
+
+  // If >= 60% of words in candidate's answer match the question and < 3 new words introduced
+  if (overlapRatio >= 0.6 && newWords.length < 3) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks if candidate provided a non-answer (e.g. "I don't know", "pass", empty).
+ */
+function checkNonAnswer(answer: string): boolean {
+  const clean = answer.trim().toLowerCase().replace(/[^\w\s]/g, "");
+  const nonAnswers = [
+    "i dont know",
+    "i dont know it",
+    "i don't know",
+    "dont know",
+    "don't know",
+    "idk",
+    "no idea",
+    "not sure",
+    "no clue",
+    "pass",
+    "skip",
+    "none",
+    "na",
+    "n/a",
+    "dunno",
+  ];
+  return nonAnswers.includes(clean) || clean.length < 4;
+}
+
+/**
+ * Checks if candidate provided an overly shallow or single-word answer (e.g. "RAG").
+ */
+function checkShallowAnswer(answer: string): boolean {
+  const clean = answer.trim().toLowerCase().replace(/[^\w\s]/g, "");
+  const words = clean.split(/\s+/).filter((w) => w.length > 0);
+  return words.length <= 2 && clean.length < 15;
+}
 
 // ---------------------------------------------------------------------------
 // Function
@@ -23,6 +96,7 @@ import { createJsonCompletion } from "@/lib/llm";
  * @param question - The question that was asked
  * @param answer - The candidate's raw text answer
  * @param state - Current interview state for contextual evaluation
+ * @param retrievedContext - Optional curriculum retrieval context for grounded evaluation
  * @returns Structured AnswerEvaluation with scores and nextAction
  *
  * Evaluation dimensions (each 0–10):
@@ -35,8 +109,54 @@ import { createJsonCompletion } from "@/lib/llm";
 export async function evaluateAnswer(
   question: InterviewQuestion,
   answer: string,
-  state: InterviewState
+  state: InterviewState,
+  retrievedContext?: RetrievedCurriculumContext
 ): Promise<AnswerEvaluation> {
+  // 1. QUESTION REPETITION CHECK
+  if (checkQuestionRepetition(answer, question.text)) {
+    return {
+      correctness: 0,
+      reasoning: 0,
+      depth: 0,
+      communication: 2,
+      engineering: 0,
+      coveredConcepts: [],
+      missingConcepts: ["No explanation provided", ...question.expectedConcepts],
+      misconceptions: ["Copied or echoed the question text instead of answering"],
+      nextAction: "probe",
+    };
+  }
+
+  // 2. NON-ANSWER CHECK
+  if (checkNonAnswer(answer)) {
+    return {
+      correctness: 1,
+      reasoning: 0,
+      depth: 0,
+      communication: 3,
+      engineering: 0,
+      coveredConcepts: [],
+      missingConcepts: ["No explanation provided", ...question.expectedConcepts],
+      misconceptions: [],
+      nextAction: "probe",
+    };
+  }
+
+  // 3. SHALLOW ANSWER CHECK (e.g. single word "RAG")
+  if (checkShallowAnswer(answer)) {
+    return {
+      correctness: 2,
+      reasoning: 1,
+      depth: 1,
+      communication: 3,
+      engineering: 1,
+      coveredConcepts: [],
+      missingConcepts: ["Insufficient explanation provided", ...question.expectedConcepts],
+      misconceptions: ["Vague single-word answer with no technical depth"],
+      nextAction: "probe",
+    };
+  }
+
   // Build context about prior performance
   const priorContext =
     state.questionHistory.length > 0
@@ -47,8 +167,13 @@ export async function evaluateAnswer(
 
   const systemPrompt = `You are an expert technical interviewer evaluating a candidate's answer in an AI engineering interview.
 
+CRITICAL EVALUATION RULES:
+1. REPETITION / ECHOING: If candidate echoes or repeats the question without providing an independent explanation, correctness MUST be 0/10 and depth 0/10. Add "No explanation provided" to missingConcepts.
+2. ANSWER DEPTH: Demand actual explanation, reasoning, technical mechanics, and trade-offs. Do not reward keyword matching alone.
+3. GROUNDED EVALUATION: Compare candidate's response against retrieved curriculum objectives and key concepts. Differentiate between concepts actually EXPLAINED vs merely mentioned vs missing.
+
 Scoring rubric (each dimension 0–10):
-- correctness: Is the answer factually and technically accurate? (0=completely wrong, 10=perfectly accurate)
+- correctness: Is the answer factually and technically accurate against curriculum context? (0=completely wrong/echoing, 10=perfectly accurate)
 - reasoning: Does the candidate reason logically and connect concepts? (0=no reasoning, 10=excellent logical flow)
 - depth: Does the answer go beyond surface recall to show genuine understanding? (0=surface only, 10=deep mastery)
 - communication: Is the answer clear, structured, and articulate? (0=incoherent, 10=perfectly clear)
@@ -56,21 +181,29 @@ Scoring rubric (each dimension 0–10):
 
 nextAction guide:
 - "follow_up": Answer was partially correct or interesting — probe deeper on same topic
-- "probe": Answer was ambiguous or made unclear claims — ask for clarification
+- "probe": Answer was ambiguous, shallow, or repeated the question — ask for clarification
 - "increase_difficulty": Answer was strong — escalate difficulty on same topic
-- "decrease_difficulty": Answer was weak — step down to foundational concepts
+- "decrease_difficulty": Answer was weak or missing — step down to foundational concepts
 - "new_topic": Answer was complete — move to a new curriculum topic
 - "cross_concept": Answer reveals a gap in a related area — bridge to that concept
 - "contradiction": Answer contradicts something said earlier
 
 Return ONLY valid JSON. No markdown, no extra text.`;
 
-  const userPrompt = `Evaluate this interview answer.
+  const retrievedSection = retrievedContext
+    ? `RETRIEVED CURRICULUM CONTEXT:
+- Expected Learning Objectives: ${retrievedContext.learningObjectives.join("; ") || "Core concept mastery"}
+- Required Key Concepts: ${retrievedContext.keyConcepts.join(", ") || question.expectedConcepts.join(", ")}
+- Related Cross-Concepts: ${retrievedContext.relatedConcepts.join(", ") || "N/A"}`
+    : `EXPECTED CONCEPTS: ${question.expectedConcepts.join(", ")}`;
+
+  const userPrompt = `Evaluate this interview answer strictly against the retrieved curriculum context and candidate state.
 
 QUESTION: ${question.text}
 TOPIC: ${question.topic} (Curriculum Day ${question.curriculumDay})
 DIFFICULTY: ${question.difficulty}/5
-EXPECTED CONCEPTS: ${question.expectedConcepts.join(", ")}
+
+${retrievedSection}
 
 CANDIDATE'S ANSWER:
 "${answer}"

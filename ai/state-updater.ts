@@ -76,12 +76,19 @@ export function applyTurnToState(
   if (compositeScore >= 7 && !updatedStrengths.includes(question.topic)) {
     updatedStrengths = [...updatedStrengths, question.topic];
   }
-  if (compositeScore < 5 && !updatedGaps.includes(question.topic)) {
-    updatedGaps = [...updatedGaps, question.topic];
+  if (compositeScore < 5) {
+    if (!updatedGaps.includes(question.topic)) {
+      updatedGaps = [...updatedGaps, question.topic];
+    }
+    for (const missing of evaluation.missingConcepts || []) {
+      if (!updatedGaps.includes(missing)) {
+        updatedGaps = [...updatedGaps, missing];
+      }
+    }
   }
   // Remove from gaps if they show improvement
   if (compositeScore >= 7) {
-    updatedGaps = updatedGaps.filter((g) => g !== question.topic);
+    updatedGaps = updatedGaps.filter((g) => g !== question.topic && g !== "No actual explanation provided");
   }
 
   return {

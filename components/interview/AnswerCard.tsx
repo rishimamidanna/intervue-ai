@@ -21,7 +21,7 @@ interface AnswerCardProps {
 }
 
 export function AnswerCard({
-  initialAnswer = "I would use Reciprocal Rank Fusion (RRF) as the default fusion strategy because it's robust and simple to tune. Each retriever produces a ranked list, and RRF combines them by summing the reciprocal ranks: score(d) = ∑ 1 / (k + rank_i(d)).\n\nTo balance semantic and lexical signals, I'd adjust weights based on query intent signals—such as query length, presence of domain-specific terms,",
+  initialAnswer = "",
   submittedAnswer,
   timestamp = "10:34 AM",
   onSendAnswer,
@@ -29,7 +29,7 @@ export function AnswerCard({
 }: AnswerCardProps) {
   const [currentInput, setCurrentInput] = useState("");
 
-  const displayAnswer = submittedAnswer || initialAnswer;
+  const displayAnswer = submittedAnswer || initialAnswer || "No answer submitted yet.";
 
   const handleSend = () => {
     if (onSendAnswer && currentInput.trim() && !isAnalyzing) {

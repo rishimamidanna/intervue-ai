@@ -225,6 +225,7 @@ export function InterviewRoom() {
   const [submittedAnswer, setSubmittedAnswer] = useState<string | undefined>(undefined);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(1478); // Starts at 00:24:38
+  const [sessionId, setSessionId] = useState<string>("");
 
   const initialQ = MOCK_QUESTIONS[0];
 
@@ -234,6 +235,28 @@ export function InterviewRoom() {
   const [currentConfidence, setCurrentConfidence] = useState<number>(initialQ.confidence);
   const [currentConcepts, setCurrentConcepts] = useState<Concept[]>(initialQ.retrievedConcepts);
   const [currentGaps, setCurrentGaps] = useState<Gap[]>(initialQ.knowledgeGaps);
+
+  // Initialize session via backend API on mount
+  useEffect(() => {
+    async function initBackendSession() {
+      try {
+        const res = await fetch("/api/interview/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ candidateId: "candidate_1" }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.sessionId) {
+            setSessionId(data.sessionId);
+          }
+        }
+      } catch (err) {
+        console.warn("API session init notice:", err);
+      }
+    }
+    initBackendSession();
+  }, []);
 
   // Live timer effect
   useEffect(() => {
@@ -254,25 +277,98 @@ export function InterviewRoom() {
 
   const currentQ = MOCK_QUESTIONS[currentQuestionIndex];
 
-  const handleSendAnswer = (answer: string) => {
+  const handleSendAnswer = async (answer: string) => {
     setSubmittedAnswer(answer);
     setIsAnalyzing(true);
 
-    // Evaluate candidate answer dynamically
-    const evaluation = evaluateCandidateAnswer(answer, currentQ);
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      activeSessionId = crypto.randomUUID();
+      setSessionId(activeSessionId);
+    }
 
-    // Update Intelligence Panel metrics immediately
-    setCurrentConfidence(evaluation.confidence);
-    setCurrentDifficulty(evaluation.difficulty);
-    setCurrentDifficultyTrend(evaluation.difficultyTrend);
-    setCurrentConcepts(evaluation.retrievedConcepts);
-    setCurrentGaps(evaluation.knowledgeGaps);
+    try {
+      const res = await fetch("/api/interview/answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: activeSessionId,
+          questionId: String(currentQ.id),
+          answer: answer,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+
+        if (data.status !== "error" && data.evaluation) {
+          const evalData = data.evaluation;
+
+          // 1. Calculate confidence score from evaluation dimensions
+          const score = Math.round(
+            ((evalData.correctness * 3.5 +
+              evalData.reasoning * 2.5 +
+              evalData.depth * 2.0 +
+              evalData.communication * 1.0 +
+              evalData.engineering * 1.0) /
+              10) *
+              10
+          );
+          const confidenceScore = Math.min(99, Math.max(20, score));
+
+          // 2. Difficulty & trend from backend evaluation
+          const nextDiff = data.progress?.currentDifficulty ?? currentDifficulty;
+          const trend =
+            evalData.nextAction === "increase_difficulty"
+              ? "Increasing"
+              : evalData.nextAction === "decrease_difficulty"
+              ? "Decreasing"
+              : "Stable";
+
+          // 3. Concepts from coveredConcepts
+          const retrievedConcepts: Concept[] = (evalData.coveredConcepts || []).map((c: string, i: number) => ({
+            name: c,
+            score: `${Math.max(80, 98 - i * 3)}%`,
+          }));
+
+          // 4. Knowledge gaps from missingConcepts
+          const knowledgeGaps: Gap[] = (evalData.missingConcepts || []).map((g: string) => ({
+            name: g,
+            severity: "Medium" as const,
+            color: "text-amber-400",
+          }));
+
+          // Update frontend state from API response
+          setCurrentConfidence(confidenceScore);
+          setCurrentDifficulty(nextDiff);
+          setCurrentDifficultyTrend(trend);
+          if (retrievedConcepts.length > 0) setCurrentConcepts(retrievedConcepts);
+          setCurrentGaps(knowledgeGaps);
+
+          setTimeout(() => {
+            setIsAnalyzing(false);
+            const nextIndex = (currentQuestionIndex + 1) % MOCK_QUESTIONS.length;
+            setCurrentQuestionIndex(nextIndex);
+          }, 1200);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("Backend API call notice, applying local fallback:", err);
+    }
+
+    // Local evaluation fallback if backend API is unconfigured/offline
+    const fallback = evaluateCandidateAnswer(answer, currentQ);
+    setCurrentConfidence(fallback.confidence);
+    setCurrentDifficulty(fallback.difficulty);
+    setCurrentDifficultyTrend(fallback.difficultyTrend);
+    setCurrentConcepts(fallback.retrievedConcepts);
+    setCurrentGaps(fallback.knowledgeGaps);
 
     setTimeout(() => {
       setIsAnalyzing(false);
       const nextIndex = (currentQuestionIndex + 1) % MOCK_QUESTIONS.length;
       setCurrentQuestionIndex(nextIndex);
-      setSubmittedAnswer(undefined);
     }, 1800);
   };
 
@@ -304,7 +400,6 @@ export function InterviewRoom() {
                   totalQuestions={MOCK_QUESTIONS.length}
                 />
                 <AnswerCard
-                  initialAnswer={currentQ.defaultCandidateAnswer}
                   submittedAnswer={submittedAnswer}
                   onSendAnswer={handleSendAnswer}
                   isAnalyzing={isAnalyzing}

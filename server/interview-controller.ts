@@ -35,7 +35,7 @@ import type {
 import { MIN_INTERVIEW_QUESTIONS, MIN_CURRICULUM_DAYS } from "@/lib/constants";
 import { createSession, requireSession } from "./session-manager";
 import { setState } from "./interview-state";
-import { loadCurriculum } from "./curriculum-service";
+import { loadCurriculum, retrieveCurriculumContext } from "./curriculum-service";
 import { analyzeCandidate } from "@/ai/candidate-profiler";
 import { createKnowledgeTwin, updateKnowledgeTwin } from "@/ai/knowledge-twin";
 import { createInterviewPlan } from "@/ai/interview-planner";
@@ -172,10 +172,18 @@ export async function handleConversationTurn(
     ? lastTurn.question
     : await generateQuestion(state, plan, curriculum);
 
+  // Retrieve curriculum context for grounding evaluation
+  const retrievedContext = retrieveCurriculumContext(
+    question.topic,
+    state.knowledgeGaps,
+    question.difficulty,
+    curriculum
+  );
+
   // 1. Run evaluation and contradiction detection IN PARALLEL — saves ~5s per turn
   const [evaluation, contradiction]: [AnswerEvaluation, Awaited<ReturnType<typeof detectContradiction>>] =
     await Promise.all([
-      evaluateAnswer(question, message, state),
+      evaluateAnswer(question, message, state, retrievedContext),
       detectContradiction(message, state),
     ]);
 
@@ -290,9 +298,17 @@ export async function processAnswer(
     .find((q) => q.id === questionId)
     ?? (await generateQuestion(state, plan, curriculum));
 
+  // Retrieve curriculum context for evaluation grounding
+  const retrievedContext = retrieveCurriculumContext(
+    question.topic,
+    state.knowledgeGaps,
+    question.difficulty,
+    curriculum
+  );
+
   // Run evaluation and contradiction detection in parallel
   const [evaluation, contradiction] = await Promise.all([
-    evaluateAnswer(question, answer, state),
+    evaluateAnswer(question, answer, state, retrievedContext),
     detectContradiction(answer, state),
   ]);
 
