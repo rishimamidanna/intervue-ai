@@ -742,6 +742,26 @@ export interface RAGSystemSummaryStats {
   bottlenecksIdentified: { stage: string; avgLatencyMs: number; percentageOfTotal: string }[];
 }
 
+// ---------------------------------------------------------------------------
+// Retrieval Planner Contracts (Milestone 7.16)
+// ---------------------------------------------------------------------------
+
+export interface RetrievalStrategy {
+  semantic: boolean;
+  bm25: boolean;
+  metadataFilter: boolean;
+  topK: number;
+  memoryRetrieval: boolean;
+  difficulty: "Beginner" | "Intermediate" | "Advanced";
+}
+
+export interface RetrievalPlannerDecision {
+  query: string;
+  strategy: RetrievalStrategy;
+  reasoning: string[];
+}
+
+
 
 
 

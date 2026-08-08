@@ -656,6 +656,26 @@ export const RAGSystemSummaryStatsSchema = z.object({
   ),
 });
 
+// ---------------------------------------------------------------------------
+// Retrieval Planner Schemas (Milestone 7.16)
+// ---------------------------------------------------------------------------
+
+export const RetrievalStrategySchema = z.object({
+  semantic: z.boolean(),
+  bm25: z.boolean(),
+  metadataFilter: z.boolean(),
+  topK: z.number().int().positive(),
+  memoryRetrieval: z.boolean(),
+  difficulty: z.enum(["Beginner", "Intermediate", "Advanced"]),
+});
+
+export const RetrievalPlannerDecisionSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  strategy: RetrievalStrategySchema,
+  reasoning: z.array(z.string()),
+});
+
+
 
 
 
