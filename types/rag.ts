@@ -1,7 +1,7 @@
 /**
  * types/rag.ts
  *
- * RAG, Semantic Chunking & Embedding Architecture Contracts (Milestone 4, 5.1 & 5.2)
+ * RAG, Semantic Chunking, Embedding & Vector Storage Contracts (Milestone 4 & 5)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
@@ -90,4 +90,24 @@ export interface EmbeddingResult {
   embedding: VectorEmbedding;
   tokenUsage?: number;
   durationMs: number;
+}
+
+// ---------------------------------------------------------------------------
+// Vector Storage Architecture Contracts (Milestone 5.3)
+// ---------------------------------------------------------------------------
+
+export interface VectorRecord {
+  chunkId: string;
+  vector: number[];
+  content: string;
+  metadata: ChunkMetadata;
+  dimensions: number;
+  createdAt: string;
+}
+
+export interface VectorStorageStats {
+  totalRecords: number;
+  dimensions: number;
+  providerName: string;
+  lastUpdated: string;
 }
