@@ -9,16 +9,11 @@
  * the final routing decision.
  *
  * Owner: Member 3 (AI / Prompt Engineering)
- *
- * TODO: Implement decideNextAction():
- *   Option A (rule-based): Apply deterministic rules to evaluation.nextAction
- *     and session constraints (e.g. minimum questions, day coverage).
- *   Option B (LLM-assisted): Use an LLM to weigh multiple signals.
- *   Coordinate with Member 2 on how the decision feeds into question generation.
  */
 
-import type { NextAction, AnswerEvaluation, InterviewState } from "@/types/interview";
+import type { NextAction, AnswerEvaluation, InterviewState, DifficultyLevel } from "@/types/interview";
 import type { InterviewPlan } from "./interview-planner";
+import { MIN_CURRICULUM_DAYS, MIN_INTERVIEW_QUESTIONS } from "@/lib/constants";
 
 // ---------------------------------------------------------------------------
 // Output Type
@@ -33,6 +28,8 @@ export interface DecisionResult {
   shouldEnd: boolean;
   /** Reasoning behind the decision (for debugging and reporting) */
   rationale: string;
+  /** New difficulty level after this turn */
+  newDifficulty: DifficultyLevel;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,30 +39,73 @@ export interface DecisionResult {
 /**
  * Determines the optimal next action after evaluating a candidate's answer.
  *
+ * Rule-based decision engine (deterministic — no LLM call needed).
+ * Respects all hard constraints: min questions, min days covered.
+ *
  * @param evaluation - The evaluation of the most recent answer
  * @param state - Current interview state
  * @param plan - The interview plan for this session
  * @returns DecisionResult directing the next question generation step
- *
- * TODO: Implement real decision logic.
- *   Rules to enforce:
- *   - Do not end before state.questionCount >= plan.minimumQuestions
- *   - Do not end before state.daysCovered.length >= 4
- *   - Respect evaluation.nextAction as the primary signal
- *   - Apply contradiction detection before contradiction action
  */
 export function decideNextAction(
   evaluation: AnswerEvaluation,
   state: InterviewState,
   plan: InterviewPlan
 ): DecisionResult {
-  void plan;
+  const meetsMinQuestions = state.questionCount >= MIN_INTERVIEW_QUESTIONS;
+  const meetsMinDays = state.daysCovered.length >= MIN_CURRICULUM_DAYS;
 
-  // TODO: Implement real decision logic
+  // Calculate composite score for this answer
+  const compositeScore =
+    evaluation.correctness * 0.35 +
+    evaluation.reasoning * 0.25 +
+    evaluation.depth * 0.20 +
+    evaluation.communication * 0.10 +
+    evaluation.engineering * 0.10;
+
+  // Determine difficulty adjustment
+  let newDifficulty: DifficultyLevel = state.difficulty;
+  if (compositeScore >= 7.5 && state.difficulty < 5) {
+    newDifficulty = Math.min(5, state.difficulty + 1) as DifficultyLevel;
+  } else if (compositeScore < 4 && state.difficulty > 1) {
+    newDifficulty = Math.max(1, state.difficulty - 1) as DifficultyLevel;
+  }
+
+  // Determine the next topic
+  const currentTopicIndex = plan.topicOrder.indexOf(state.currentTopic);
+  const nextTopicFromPlan =
+    plan.topicOrder[currentTopicIndex + 1] ?? plan.topicOrder[0] ?? state.currentTopic;
+
+  // Decide whether to stay on topic or move on based on the evaluation action
+  const stayOnTopic =
+    evaluation.nextAction === "follow_up" ||
+    evaluation.nextAction === "probe" ||
+    evaluation.nextAction === "increase_difficulty" ||
+    evaluation.nextAction === "decrease_difficulty" ||
+    evaluation.nextAction === "contradiction";
+
+  const nextTopic = stayOnTopic ? state.currentTopic : nextTopicFromPlan;
+
+  // Check if we should end the interview
+  // Only end if BOTH constraints are met AND the LLM suggested wrapping up
+  const shouldEnd =
+    meetsMinQuestions &&
+    meetsMinDays &&
+    (evaluation.nextAction === "new_topic" && currentTopicIndex >= plan.topicOrder.length - 1);
+
+  // Build rationale
+  const rationale =
+    `Score: ${compositeScore.toFixed(1)}/10. ` +
+    `Questions: ${state.questionCount}/${MIN_INTERVIEW_QUESTIONS} min. ` +
+    `Days covered: ${state.daysCovered.length}/${MIN_CURRICULUM_DAYS} min. ` +
+    `Action: ${evaluation.nextAction}. ` +
+    `${shouldEnd ? "Completing interview — all requirements met." : `Continuing with topic: ${nextTopic}.`}`;
+
   return {
     action: evaluation.nextAction,
-    nextTopic: state.currentTopic,
-    shouldEnd: false,
-    rationale: "Scaffold placeholder — decideNextAction() not implemented.",
+    nextTopic,
+    shouldEnd,
+    rationale,
+    newDifficulty,
   };
 }

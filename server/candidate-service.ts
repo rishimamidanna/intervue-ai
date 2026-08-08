@@ -33,11 +33,17 @@ export async function loadCandidates(): Promise<CandidateProfile[]> {
 
   const raw = (await import("@/data/candidates.json")).default as unknown;
 
-  if (!Array.isArray(raw)) {
-    throw new Error("candidates.json must contain a JSON array");
+  // Handle both array format (scaffold) and real object format { candidates: [...] }
+  let candidates: CandidateProfile[];
+  if (Array.isArray(raw)) {
+    candidates = raw as CandidateProfile[];
+  } else if (raw && typeof raw === "object" && "candidates" in raw) {
+    candidates = (raw as { candidates: CandidateProfile[] }).candidates;
+  } else {
+    throw new Error("candidates.json must be an array or an object with a 'candidates' array");
   }
 
-  _candidateCache = raw as CandidateProfile[];
+  _candidateCache = candidates;
   return _candidateCache;
 }
 

@@ -27,6 +27,7 @@
 import type { CandidateProfile } from "@/types/candidate";
 import type { CurriculumDay } from "@/types/curriculum";
 import type { TopicKnowledge } from "@/types/interview";
+import { createJsonCompletion } from "@/lib/llm";
 
 // ---------------------------------------------------------------------------
 // Output Type
@@ -62,24 +63,82 @@ export interface CandidateIntelligenceProfile {
  * @param candidateProfile - The candidate's cohort data matching official schema
  * @param curriculum - The full curriculum (used to contextualise topics)
  * @returns CandidateIntelligenceProfile seeding the interview strategy
- *
- * TODO: Replace placeholder return with real LLM-powered candidate analysis.
  */
 export async function analyzeCandidate(
   candidateProfile: CandidateProfile,
   curriculum: CurriculumDay[]
 ): Promise<CandidateIntelligenceProfile> {
-  void candidateProfile;
-  void curriculum;
+  const candidateId = candidateProfile.member?.id || "unknown";
 
-  // TODO: Implement real LLM-based candidate analysis using heuristics described above
-  return {
-    candidateId: candidateProfile.member?.id || "unknown",
-    initialKnowledgeEstimates: [],
-    priorityTopics: [],
-    weaknessSignals: [],
-    strengthSignals: [],
-    expectedDepthFactor: 1,
-    profileSummary: "Not implemented — analyzeCandidate() is a scaffold stub.",
-  };
+  // Build a summary of curriculum topics for context
+  const topicList = curriculum
+    .slice(0, 31)
+    .map((day) => `Day ${day.day}: ${day.topic}`)
+    .join("\n");
+
+  // Summarize missions
+  const missions = candidateProfile.missions ?? [];
+  const missionSummary = missions
+    .map(
+      (m) =>
+        `Day ${m.day} - "${m.title}": passed=${m.passed}, attempts=${m.attempts ?? 1}, skipped=${m.skipped ?? false}`
+    )
+    .join("\n");
+
+  const signals = candidateProfile.signals ?? {};
+  const member = candidateProfile.member ?? {};
+
+  const systemPrompt = `You are an expert AI interview strategist analyzing a learner's performance in a 31-day AI engineering cohort.
+Your job is to analyze their cohort data and produce a structured intelligence profile that will guide a technical interview.
+
+Apply these heuristics:
+- passed=true + attempts=1 → strong evidence (strengthSignal)
+- passed=true + attempts>2 → needs verification (priorityTopic)
+- passed=false → knowledge gap (weaknessSignal + priorityTopic)
+- skipped=true → unknown knowledge (priorityTopic, must verify)
+- High commitDays and missionsFirstTry → strong learner, increase expectedDepthFactor
+- Low commitDays → inconsistent learner, lower expectedDepthFactor
+
+Return ONLY valid JSON matching the required schema. No markdown, no extra text.`;
+
+  const userPrompt = `Analyze this candidate and return a JSON profile.
+
+CANDIDATE:
+- ID: ${candidateId}
+- Name: ${member.name ?? "Unknown"}
+- Job Role: ${member.jobRole ?? "Unknown"}
+- Years Experience: ${member.yearsExperience ?? 0}
+- Education: ${member.education ?? "Unknown"}
+
+COHORT SIGNALS:
+- Commit Days: ${signals.commitDays ?? 0}
+- Missions Completed: ${signals.missionsCompleted ?? 0}
+- Missions First Try: ${signals.missionsFirstTry ?? 0}
+
+MISSION RESULTS:
+${missionSummary || "No mission data available."}
+
+CURRICULUM TOPICS:
+${topicList}
+
+Return this exact JSON structure (no extra keys):
+{
+  "candidateId": "${candidateId}",
+  "initialKnowledgeEstimates": [
+    { "topic": "string", "estimatedScore": 0-10, "confidence": "low|medium|high", "evidenceCount": 0 }
+  ],
+  "priorityTopics": ["topic1", "topic2"],
+  "weaknessSignals": ["topic1", "topic2"],
+  "strengthSignals": ["topic1", "topic2"],
+  "expectedDepthFactor": 1.0,
+  "profileSummary": "2-3 sentence narrative about the candidate's learning journey and interview focus areas"
+}`;
+
+  const profile = await createJsonCompletion<CandidateIntelligenceProfile>([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ]);
+
+  // Ensure candidateId is always set correctly
+  return { ...profile, candidateId };
 }

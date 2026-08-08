@@ -147,7 +147,7 @@ export async function handleConversationTurn(
   // 4. Decide next action
   const decision = decideNextAction(evaluation, state, plan);
 
-  // 5. Apply turn to state
+  // 5. Apply turn to state (difficulty update is carried via decision.newDifficulty in state-updater)
   const nextState = applyTurnToState(state, question, message, evaluation, decision, updatedTwin);
   if (contradiction.detected && contradiction.description) {
     nextState.contradictions = [...nextState.contradictions, contradiction.description];

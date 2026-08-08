@@ -38,15 +38,32 @@ let _curriculumCache: CurriculumDay[] | null = null;
 export async function loadCurriculum(): Promise<CurriculumDay[]> {
   if (_curriculumCache) return _curriculumCache;
 
-  // TODO: Replace this dynamic import with the real data loading strategy.
-  //   Options: fs.readFileSync, fetch from CDN, or database query.
+  // The real curriculum.json is an object { cohort, modules, days: [...] }
+  // Each day uses `title` and `objectives` instead of `topic` and `learningObjectives`
   const raw = (await import("@/data/curriculum.json")).default as unknown;
 
-  if (!Array.isArray(raw)) {
-    throw new Error("curriculum.json must contain a JSON array");
+  // Handle both array format (scaffold) and real object format
+  let days: Record<string, unknown>[];
+  if (Array.isArray(raw)) {
+    days = raw as Record<string, unknown>[];
+  } else if (raw && typeof raw === "object" && "days" in raw) {
+    days = (raw as { days: Record<string, unknown>[] }).days;
+  } else {
+    throw new Error("curriculum.json must contain a JSON array or an object with a 'days' array");
   }
 
-  _curriculumCache = raw as CurriculumDay[];
+  // Normalize field names to match CurriculumDay type
+  _curriculumCache = days.map((d) => ({
+    day: d.day as number,
+    module: (d.module ?? d.type ?? "") as string,
+    // Real JSON uses 'title', type uses 'topic' — support both
+    topic: (d.topic ?? d.title ?? `Day ${d.day}`) as string,
+    // Real JSON uses 'objectives', type uses 'learningObjectives' — support both
+    learningObjectives: (d.learningObjectives ?? d.objectives ?? []) as string[],
+    tools: (d.tools ?? []) as string[],
+    concepts: (d.concepts ?? []) as string[],
+  })) as CurriculumDay[];
+
   return _curriculumCache;
 }
 

@@ -8,16 +8,12 @@
  * curriculum days to focus on, the initial difficulty, and the order of topics.
  *
  * Owner: Member 3 (AI / Prompt Engineering)
- *
- * TODO: Implement createInterviewPlan() using the LLM client:
- *   1. Build a prompt from KnowledgeTwin + curriculum + constraints
- *   2. Call createChatCompletion() from lib/llm.ts
- *   3. Parse and validate the structured JSON response
- *   4. Return InterviewPlan
  */
 
 import type { DifficultyLevel, TopicKnowledge } from "@/types/interview";
 import type { CurriculumDay } from "@/types/curriculum";
+import { createJsonCompletion } from "@/lib/llm";
+import { MIN_CURRICULUM_DAYS, MIN_INTERVIEW_QUESTIONS } from "@/lib/constants";
 
 // ---------------------------------------------------------------------------
 // Output Type
@@ -53,8 +49,7 @@ export interface InterviewPlan {
  * @param curriculum - Full curriculum used to resolve day → topic mappings
  * @returns InterviewPlan guiding question selection throughout the session
  *
- * TODO: Replace placeholder return with real LLM-powered strategy creation.
- *   Constraints:
+ * Constraints:
  *   - Must target at least 4 distinct curriculum days
  *   - Must set minimumQuestions >= 8
  *   - Should prioritise weak areas and skip-heavy topics
@@ -63,16 +58,70 @@ export async function createInterviewPlan(
   knowledgeTwin: TopicKnowledge[],
   curriculum: CurriculumDay[]
 ): Promise<InterviewPlan> {
-  void knowledgeTwin;
-  void curriculum;
+  // Build curriculum day map for the prompt
+  const curriculumSummary = curriculum
+    .slice(0, 31)
+    .map((day) => `Day ${day.day}: ${day.topic}`)
+    .join("\n");
 
-  // TODO: Implement real LLM-based interview strategy
+  // Summarize the knowledge twin
+  const twinSummary =
+    knowledgeTwin.length > 0
+      ? knowledgeTwin
+          .map(
+            (t) =>
+              `- ${t.topic}: score=${t.estimatedScore}/10, confidence=${t.confidence}, evidence=${t.evidenceCount}`
+          )
+          .join("\n")
+      : "No prior knowledge data available — treat as a fresh candidate.";
+
+  const systemPrompt = `You are an expert technical interview strategist for an AI engineering program.
+Your task is to create a personalised interview plan based on a candidate's knowledge profile.
+
+Rules you MUST follow:
+1. targetDays MUST contain at least ${MIN_CURRICULUM_DAYS} distinct curriculum day numbers.
+2. minimumQuestions MUST be at least ${MIN_INTERVIEW_QUESTIONS}.
+3. Prioritise topics where estimatedScore < 6 or confidence = "low".
+4. Deprioritise topics where estimatedScore >= 8 and confidence = "high".
+5. startingDifficulty should be 2 for beginners, 3 for intermediate, 4 for advanced candidates.
+
+Return ONLY valid JSON. No markdown, no extra text.`;
+
+  const userPrompt = `Create an interview plan for this candidate.
+
+CANDIDATE KNOWLEDGE TWIN:
+${twinSummary}
+
+AVAILABLE CURRICULUM DAYS:
+${curriculumSummary}
+
+Return this exact JSON structure:
+{
+  "targetDays": [1, 5, 10, 15],
+  "topicOrder": ["Topic A", "Topic B", "Topic C", "Topic D"],
+  "startingDifficulty": 2,
+  "minimumQuestions": 10,
+  "deprioritisedTopics": ["Strong Topic"],
+  "rationale": "Brief explanation of the strategy"
+}
+
+Ensure targetDays has at least ${MIN_CURRICULUM_DAYS} entries and minimumQuestions >= ${MIN_INTERVIEW_QUESTIONS}.`;
+
+  const plan = await createJsonCompletion<InterviewPlan>([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ]);
+
+  // Enforce hard constraints regardless of LLM output
   return {
-    targetDays: [],
-    topicOrder: [],
-    startingDifficulty: 2,
-    minimumQuestions: 8,
-    deprioritisedTopics: [],
-    rationale: "Not implemented — createInterviewPlan() is a scaffold stub.",
+    ...plan,
+    minimumQuestions: Math.max(plan.minimumQuestions, MIN_INTERVIEW_QUESTIONS),
+    targetDays:
+      plan.targetDays.length >= MIN_CURRICULUM_DAYS
+        ? plan.targetDays
+        : [...plan.targetDays, ...curriculum.slice(0, MIN_CURRICULUM_DAYS).map((d) => d.day)].slice(
+            0,
+            MIN_CURRICULUM_DAYS
+          ),
   };
 }
