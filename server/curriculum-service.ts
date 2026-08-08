@@ -4,19 +4,22 @@
  * Curriculum Data Service
  *
  * Loads and indexes the hackathon curriculum JSON. Delegates validation,
- * normalization, and knowledge unit processing to Data Loaders and Processors.
+ * normalization, knowledge unit processing, and candidate retrieval to Data Loaders,
+ * Processors, and Retrievers.
  * Provides typed, O(1) lookup of curriculum days and knowledge units for AI modules.
  *
  * Owner: Member 2 (Backend / API)
  */
 
-import type { CurriculumDay, CurriculumIndex, CurriculumKnowledgeUnit } from "@/types/curriculum";
+import type { CandidateIntelligenceProfile } from "@/types/candidate";
+import type { CurriculumDay, CurriculumIndex, CurriculumKnowledgeUnit, RelevantKnowledgeContext } from "@/types/curriculum";
 import {
   loadCurriculum as loadCurriculumData,
   getCurriculumIndex as getIndexFromLoader,
   getCurriculumDay as getDayFromLoader,
 } from "@/lib/loaders/curriculum-loader";
 import { processCurriculumData } from "@/lib/processors/curriculum-processor";
+import { retrieveRelevantKnowledge } from "@/lib/retrieval/curriculum-retriever";
 
 // ---------------------------------------------------------------------------
 // Data Loading Cache
@@ -51,6 +54,19 @@ export async function getProcessedCurriculum(): Promise<CurriculumKnowledgeUnit[
   const curriculumData = await loadCurriculumData();
   _unitsCache = processCurriculumData(curriculumData);
   return _unitsCache;
+}
+
+/**
+ * Retrieves the most relevant curriculum knowledge units and context for a candidate.
+ *
+ * @param candidateProfile - CandidateIntelligenceProfile from Milestone 1.2
+ * @returns RelevantKnowledgeContext
+ */
+export async function getRelevantKnowledgeForCandidate(
+  candidateProfile: CandidateIntelligenceProfile
+): Promise<RelevantKnowledgeContext> {
+  const units = await getProcessedCurriculum();
+  return retrieveRelevantKnowledge(candidateProfile, units);
 }
 
 /**
