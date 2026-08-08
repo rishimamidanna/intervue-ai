@@ -702,6 +702,17 @@ export const DynamicHybridDecisionSchema = z.object({
   explanation: z.string().min(1, "explanation is required"),
 });
 
+// ---------------------------------------------------------------------------
+// Dynamic Difficulty Schemas (Milestone 7.20)
+// ---------------------------------------------------------------------------
+
+export const DifficultyDecisionSchema = z.object({
+  currentLevel: z.string().min(1, "currentLevel is required"),
+  nextLevel: z.string().min(1, "nextLevel is required"),
+  reasoning: z.string().min(1, "reasoning is required"),
+});
+
+
 
 
 

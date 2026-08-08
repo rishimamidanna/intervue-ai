@@ -788,6 +788,23 @@ export interface DynamicHybridDecision {
   explanation: string;
 }
 
+// ---------------------------------------------------------------------------
+// Dynamic Difficulty Contracts (Milestone 7.20)
+// ---------------------------------------------------------------------------
+
+export interface CandidateAssessment {
+  score: number;
+  confidence: number;
+  weaknessesTracked?: string[];
+}
+
+export interface DifficultyDecision {
+  currentLevel: string;
+  nextLevel: string;
+  reasoning: string;
+}
+
+
 
 
 
