@@ -1,7 +1,7 @@
 /**
  * types/rag.ts
  *
- * RAG & Semantic Chunking Architecture Contracts (Milestone 4.1)
+ * RAG & Semantic Chunking Architecture Contracts (Milestone 4.1 & 4.2)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
@@ -23,7 +23,7 @@ export interface ChunkMetadata {
 }
 
 /**
- * Core CurriculumChunk structure for RAG chunking.
+ * Core CurriculumChunk structure for curriculum-aware RAG chunking.
  */
 export interface CurriculumChunk {
   chunkId: string;
@@ -31,6 +31,7 @@ export interface CurriculumChunk {
   topic: string;
   concept: string;
   content: string;
+  keywords: string[];
   metadata: ChunkMetadata;
 }
 

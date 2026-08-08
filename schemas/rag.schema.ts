@@ -29,6 +29,7 @@ export const CurriculumChunkSchema = z.object({
   topic: z.string().min(1, "topic is required"),
   concept: z.string().min(1, "concept is required"),
   content: z.string().min(1, "content is required"),
+  keywords: z.array(z.string()).min(1, "keywords array must not be empty"),
   metadata: ChunkMetadataSchema,
 });
 
