@@ -838,3 +838,11 @@ export const LightweightReflectionOutputSchema = z.object({
   issues: z.array(z.string()),
   recommendation: z.string().optional(),
 });
+
+export const LightweightBenchmarkReportSchema = z.object({
+  totalQuestions: z.union([z.number(), z.string()]),
+  retrievalScore: z.string(),
+  contextScore: z.string(),
+  averageLatency: z.string(),
+  overallScore: z.string(),
+});

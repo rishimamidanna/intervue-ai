@@ -967,3 +967,21 @@ export interface LightweightReflectionOutput {
   issues: string[];
   recommendation?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Lightweight RAG Quality Benchmark Contracts (Milestone 7.36)
+// ---------------------------------------------------------------------------
+
+export interface LightweightBenchmarkItem {
+  question: string;
+  expectedConcepts: string[];
+  expectedTopics: string[];
+}
+
+export interface LightweightBenchmarkReport {
+  totalQuestions: number | string;
+  retrievalScore: string;
+  contextScore: string;
+  averageLatency: string;
+  overallScore: string;
+}
