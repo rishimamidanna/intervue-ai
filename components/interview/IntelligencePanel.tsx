@@ -26,20 +26,41 @@ import {
   Cpu,
 } from "lucide-react";
 
-export function IntelligencePanel() {
-  const concepts = [
+export interface Concept {
+  name: string;
+  score: string;
+}
+
+export interface Gap {
+  name: string;
+  severity: string;
+  color: string;
+}
+
+interface IntelligencePanelProps {
+  difficulty?: number;
+  difficultyTrend?: string;
+  confidence?: number;
+  concepts?: Concept[];
+  gaps?: Gap[];
+}
+
+export function IntelligencePanel({
+  difficulty = 7,
+  difficultyTrend = "Increasing",
+  confidence = 88,
+  concepts = [
     { name: "Reciprocal Rank Fusion (RRF)", score: "98%" },
     { name: "Hybrid Retrieval", score: "94%" },
     { name: "BM25", score: "91%" },
     { name: "Vector Embeddings", score: "89%" },
     { name: "Query Intent Modeling", score: "87%" },
-  ];
-
-  const gaps = [
+  ],
+  gaps = [
     { name: "Dynamic Weight Optimization", severity: "Medium", color: "text-amber-400" },
     { name: "Evaluation Metrics for RAG", severity: "Low", color: "text-rose-400" },
-  ];
-
+  ],
+}: IntelligencePanelProps) {
   return (
     <aside className="w-80 shrink-0 space-y-2 select-none">
       {/* CARD 1: Adaptive Difficulty */}
@@ -52,14 +73,14 @@ export function IntelligencePanel() {
             </span>
           </div>
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-600/20 border border-purple-500/30 text-[10px] font-semibold text-purple-300">
-            <span>Level 7</span>
-            <span className="text-emerald-400 font-mono">Increasing</span>
+            <span>Level {difficulty}</span>
+            <span className="text-emerald-400 font-mono">{difficultyTrend}</span>
           </div>
         </div>
 
         {/* Animated Bar Chart */}
         <div className="flex items-end justify-between gap-1.5 h-12 pt-2 px-1">
-          {[35, 45, 60, 50, 75, 65, 90].map((h, i) => (
+          {[35, 45, 60, 50, 75, 65, Math.min(100, difficulty * 10)].map((h, i) => (
             <div
               key={i}
               className="flex-1 bg-gradient-to-t from-purple-900/40 via-purple-600 to-indigo-400 rounded-t-sm shadow-[0_0_8px_rgba(168,85,247,0.3)] transition-all duration-500 hover:brightness-125"
@@ -107,7 +128,7 @@ export function IntelligencePanel() {
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
               />
               <path
-                strokeDasharray="88, 100"
+                strokeDasharray={`${Math.round(confidence * 0.9)}, 100`}
                 strokeWidth="3.5"
                 strokeLinecap="round"
                 stroke="url(#confidence-ring-gradient)"
@@ -128,16 +149,16 @@ export function IntelligencePanel() {
               </path>
             </svg>
             <span className="absolute font-mono text-sm font-bold text-white">
-              88%
+              {confidence}%
             </span>
           </div>
 
           <div className="space-y-1">
             <div className="text-xs font-semibold text-purple-300">
-              High Confidence
+              {confidence >= 90 ? "Very High Confidence" : confidence >= 80 ? "High Confidence" : "Moderate Confidence"}
             </div>
             <p className="text-[10px] text-zinc-400 leading-tight">
-              The AI is 88% confident in its understanding of your current knowledge.
+              The AI is {confidence}% confident in its understanding of your current knowledge.
             </p>
           </div>
         </div>
@@ -317,7 +338,7 @@ export function IntelligencePanel() {
             </span>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-purple-600/20 text-purple-300 text-[9px] font-mono border border-purple-500/30">
-            5 New Concepts
+            {concepts.length} Concepts
           </span>
         </div>
 
@@ -364,7 +385,7 @@ export function IntelligencePanel() {
             </span>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[9px] font-mono border border-amber-500/30">
-            2 Gaps Identified
+            {gaps.length} {gaps.length === 1 ? "Gap" : "Gaps"} Identified
           </span>
         </div>
 
@@ -374,20 +395,26 @@ export function IntelligencePanel() {
 
         {/* Gap Items */}
         <div className="space-y-1 pt-0.5">
-          {gaps.map((g) => (
-            <div
-              key={g.name}
-              className="flex items-center justify-between rounded-lg border border-purple-900/20 bg-zinc-950/40 px-2 py-0.5 text-[10px]"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-zinc-300 truncate">{g.name}</span>
+          {gaps.length > 0 ? (
+            gaps.map((g) => (
+              <div
+                key={g.name}
+                className="flex items-center justify-between rounded-lg border border-purple-900/20 bg-zinc-950/40 px-2 py-0.5 text-[10px]"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-zinc-300 truncate">{g.name}</span>
+                </div>
+                <span className={`text-[10px] font-mono font-medium ${g.color}`}>
+                  {g.severity}
+                </span>
               </div>
-              <span className={`text-[10px] font-mono font-medium ${g.color}`}>
-                {g.severity}
-              </span>
+            ))
+          ) : (
+            <div className="py-2 text-center text-[10px] text-emerald-400 font-mono">
+              ✓ No gaps detected for this topic
             </div>
-          ))}
+          )}
         </div>
 
         <div className="text-right pt-0.5">

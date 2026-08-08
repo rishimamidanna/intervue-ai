@@ -18,7 +18,11 @@
 import React from "react";
 import { Sparkles, Brain, Target, Layers, AlignLeft, CheckCircle2 } from "lucide-react";
 
-export function AnalysisBar() {
+interface AnalysisBarProps {
+  isAnalyzing?: boolean;
+}
+
+export function AnalysisBar({ isAnalyzing = false }: AnalysisBarProps) {
   const metrics = [
     {
       title: "Understanding",
@@ -48,7 +52,7 @@ export function AnalysisBar() {
   ];
 
   return (
-    <div className="relative overflow-hidden bg-[#090512]/90 border border-purple-900/30 backdrop-blur-2xl rounded-2xl p-4 space-y-3 shadow-[0_4px_25px_rgba(0,0,0,0.6)] select-none">
+    <div className={`relative overflow-hidden bg-[#090512]/90 border backdrop-blur-2xl rounded-2xl p-4 space-y-3 shadow-[0_4px_25px_rgba(0,0,0,0.6)] select-none transition-all duration-300 ${isAnalyzing ? "border-purple-500/60 shadow-[0_0_30px_rgba(168,85,247,0.3)]" : "border-purple-900/30"}`}>
       {/* Background Animated Energy Waveform SVG */}
       <div className="absolute inset-0 pointer-events-none opacity-25 flex items-center justify-center">
         <svg
@@ -75,13 +79,13 @@ export function AnalysisBar() {
 
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
+        <span className="relative flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500 shadow-[0_0_8px_#c084fc]" />
         </span>
-        <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-        <span className="text-xs font-semibold text-white tracking-wide">
-          AI is actively analyzing your response
+        <Sparkles className={`w-3.5 h-3.5 ${isAnalyzing ? "text-purple-300 animate-spin" : "text-purple-400"}`} />
+        <span className={`text-xs font-semibold tracking-wide ${isAnalyzing ? "text-purple-200 animate-pulse font-bold" : "text-white"}`}>
+          {isAnalyzing ? "AI is analyzing your response..." : "AI is actively analyzing your response"}
         </span>
       </div>
 

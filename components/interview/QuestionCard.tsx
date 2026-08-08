@@ -16,12 +16,18 @@ interface QuestionCardProps {
   questionText?: string;
   timestamp?: string;
   tags?: string[];
+  topic?: string;
+  difficulty?: number;
+  questionNumber?: number;
+  totalQuestions?: number;
 }
 
 export function QuestionCard({
   questionText = "In a hybrid retrieval system that combines dense vector search and sparse BM25 retrieval, how would you design the fusion strategy to balance semantic relevance and exact keyword matching? What factors would you consider when adjusting the weights dynamically?",
   timestamp = "10:32 AM",
   tags = ["RAG", "Hybrid Retrieval", "BM25", "Vector Search", "Ranking"],
+  topic = "RAG & Hybrid Retrieval",
+  difficulty = 7,
 }: QuestionCardProps) {
   return (
     <div className="bg-[#0e0a1b]/80 border border-purple-900/30 backdrop-blur-xl rounded-2xl p-5 space-y-4 shadow-[0_4px_25px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-purple-500/40">
@@ -34,8 +40,16 @@ export function QuestionCard({
           <span className="text-sm font-semibold text-white tracking-wide">
             AI Interviewer
           </span>
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-purple-900/40 border border-purple-500/30 text-purple-300">
+            {topic}
+          </span>
         </div>
-        <span className="text-[11px] font-mono text-zinc-500">{timestamp}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-[11px] font-mono text-purple-300/90 bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-900/40">
+            <span>Level {difficulty}</span>
+          </div>
+          <span className="text-[11px] font-mono text-zinc-500">{timestamp}</span>
+        </div>
       </div>
 
       {/* Technical Question Text */}
