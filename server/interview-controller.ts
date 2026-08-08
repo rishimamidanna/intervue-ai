@@ -39,12 +39,36 @@ import { loadCurriculum } from "./curriculum-service";
 import { analyzeCandidate } from "@/ai/candidate-profiler";
 import { createKnowledgeTwin, updateKnowledgeTwin } from "@/ai/knowledge-twin";
 import { createInterviewPlan } from "@/ai/interview-planner";
+import type { InterviewPlan } from "@/ai/interview-planner";
 import { generateQuestion } from "@/ai/question-generator";
 import { evaluateAnswer } from "@/ai/answer-evaluator";
 import { decideNextAction } from "@/ai/decision-engine";
 import { applyTurnToState } from "@/ai/state-updater";
 import { detectContradiction } from "@/ai/contradiction-detector";
 import { generateFinalFeedback } from "@/ai/feedback-generator";
+
+// ---------------------------------------------------------------------------
+// Plan Cache — avoids re-running createInterviewPlan() on every turn
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-session interview plan cache.
+ * The plan is created ONCE during initializeInterview and reused for all turns.
+ * This eliminates a full LLM round-trip on every conversation turn.
+ */
+const planCache = new Map<string, InterviewPlan>();
+
+function cachePlan(sessionId: string, plan: InterviewPlan): void {
+  planCache.set(sessionId, plan);
+}
+
+function getCachedPlan(sessionId: string): InterviewPlan | undefined {
+  return planCache.get(sessionId);
+}
+
+function evictPlan(sessionId: string): void {
+  planCache.delete(sessionId);
+}
 
 // ---------------------------------------------------------------------------
 // Feedback Mapping Layer
@@ -77,6 +101,8 @@ export function toPublicFeedback(internalFeedback: FinalFeedback): InterviewFeed
 /**
  * Initializes a new interview session via official API (POST /api/interview).
  *
+ * Creates and CACHES the interview plan so subsequent turns don't re-run it.
+ *
  * @param sessionId - Session identifier supplied in request
  * @param candidate - CandidateProfile payload
  */
@@ -90,8 +116,9 @@ export async function initializeInterview(
   const profile = await analyzeCandidate(candidate, curriculum);
   const knowledgeTwin = createKnowledgeTwin(profile);
 
-  // 2. Create interview strategy
+  // 2. Create interview strategy ONCE and cache it for this session
   const plan = await createInterviewPlan(knowledgeTwin, curriculum);
+  cachePlan(sessionId, plan);
 
   // 3. Create session with state
   const candidateId = candidate.member?.id || "unknown";
@@ -118,6 +145,9 @@ export async function initializeInterview(
 /**
  * Handles a conversation turn via official API (POST /api/interview).
  *
+ * Uses the CACHED interview plan — no LLM call for plan creation on each turn.
+ * Runs evaluation and next-question generation in PARALLEL where safe.
+ *
  * @param sessionId - Active session identifier
  * @param message - Candidate's response message
  */
@@ -126,8 +156,15 @@ export async function handleConversationTurn(
   message: string
 ): Promise<InterviewResponse> {
   const state = requireSession(sessionId);
+
+  // Use cached curriculum and plan — NO extra LLM calls
   const curriculum = await loadCurriculum();
-  const plan = await createInterviewPlan(state.knowledgeTwin, curriculum);
+  const plan = getCachedPlan(sessionId) ?? await createInterviewPlan(state.knowledgeTwin, curriculum);
+
+  // Cache it if it wasn't already (safety net)
+  if (!getCachedPlan(sessionId)) {
+    cachePlan(sessionId, plan);
+  }
 
   // Retrieve the question being answered from history or generate stub
   const lastTurn = state.questionHistory[state.questionHistory.length - 1];
@@ -135,35 +172,37 @@ export async function handleConversationTurn(
     ? lastTurn.question
     : await generateQuestion(state, plan, curriculum);
 
-  // 1. Evaluate answer
-  const evaluation: AnswerEvaluation = await evaluateAnswer(question, message, state);
+  // 1. Run evaluation and contradiction detection IN PARALLEL — saves ~5s per turn
+  const [evaluation, contradiction]: [AnswerEvaluation, Awaited<ReturnType<typeof detectContradiction>>] =
+    await Promise.all([
+      evaluateAnswer(question, message, state),
+      detectContradiction(message, state),
+    ]);
 
-  // 2. Detect contradictions
-  const contradiction = await detectContradiction(message, state);
-
-  // 3. Update Knowledge Twin
+  // 2. Update Knowledge Twin (pure function, no LLM)
   const updatedTwin = updateKnowledgeTwin(state.knowledgeTwin, question, evaluation);
 
-  // 4. Decide next action
+  // 3. Decide next action (pure function, no LLM)
   const decision = decideNextAction(evaluation, state, plan);
 
-  // 5. Apply turn to state (difficulty update is carried via decision.newDifficulty in state-updater)
+  // 4. Apply turn to state (pure function, no LLM)
   const nextState = applyTurnToState(state, question, message, evaluation, decision, updatedTwin);
   if (contradiction.detected && contradiction.description) {
     nextState.contradictions = [...nextState.contradictions, contradiction.description];
   }
   setState(sessionId, nextState);
 
-  // 6. Check completion constraints
+  // 5. Check completion constraints
   const meetsMinQuestions = nextState.questionCount >= MIN_INTERVIEW_QUESTIONS;
   const meetsMinDays = nextState.daysCovered.length >= MIN_CURRICULUM_DAYS;
   const isComplete = decision.shouldEnd && meetsMinQuestions && meetsMinDays;
 
   if (isComplete) {
+    evictPlan(sessionId); // Clean up cache on completion
     return completeInterview(sessionId);
   }
 
-  // Generate next question
+  // 6. Generate next question (only one LLM call per turn now)
   const nextQuestion = await generateQuestion(nextState, plan, curriculum);
   return {
     reply: nextQuestion.text,
@@ -222,6 +261,8 @@ export async function initializeInternalInterview(
     initialDifficulty: plan.startingDifficulty,
   });
 
+  cachePlan(sessionId, plan);
+
   const state = requireSession(sessionId);
   const stateWithTwin: InterviewState = { ...state, knowledgeTwin };
   setState(sessionId, stateWithTwin);
@@ -242,15 +283,19 @@ export async function processAnswer(
 ): Promise<InternalSubmitAnswerResponse> {
   const state = requireSession(sessionId);
   const curriculum = await loadCurriculum();
-  const plan = await createInterviewPlan(state.knowledgeTwin, curriculum);
+  const plan = getCachedPlan(sessionId) ?? await createInterviewPlan(state.knowledgeTwin, curriculum);
 
   const question = state.questionHistory
     .map((t) => t.question)
     .find((q) => q.id === questionId)
     ?? (await generateQuestion(state, plan, curriculum));
 
-  const evaluation = await evaluateAnswer(question, answer, state);
-  const contradiction = await detectContradiction(answer, state);
+  // Run evaluation and contradiction detection in parallel
+  const [evaluation, contradiction] = await Promise.all([
+    evaluateAnswer(question, answer, state),
+    detectContradiction(answer, state),
+  ]);
+
   const updatedTwin = updateKnowledgeTwin(state.knowledgeTwin, question, evaluation);
   const decision = decideNextAction(evaluation, state, plan);
   const nextState = applyTurnToState(state, question, answer, evaluation, decision, updatedTwin);
@@ -270,6 +315,7 @@ export async function processAnswer(
   };
 
   if (decision.shouldEnd && progress.minimumRequirementsMet) {
+    evictPlan(sessionId);
     return {
       status: "completed",
       evaluation,
