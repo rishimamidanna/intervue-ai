@@ -739,6 +739,24 @@ export const HallucinationGuardResponseSchema = z.object({
   explanation: z.string().min(1, "explanation is required"),
 });
 
+// ---------------------------------------------------------------------------
+// RAG Evaluation Benchmark Schemas (Milestone 7.22)
+// ---------------------------------------------------------------------------
+
+export const RAGEvaluationBenchmarkItemSchema = z.object({
+  question: z.string().min(1, "question is required"),
+  expectedTopics: z.array(z.string()),
+  expectedSources: z.array(z.string()),
+});
+
+export const RAGEvaluationBenchmarkResultSchema = z.object({
+  retrievalScore: z.string().min(1, "retrievalScore is required"),
+  contextScore: z.string().min(1, "contextScore is required"),
+  latency: z.string().min(1, "latency is required"),
+  overallScore: z.string().min(1, "overallScore is required"),
+});
+
+
 
 
 

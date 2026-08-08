@@ -831,6 +831,24 @@ export interface HallucinationGuardResponse {
   explanation: string;
 }
 
+// ---------------------------------------------------------------------------
+// RAG Evaluation Benchmark Contracts (Milestone 7.22)
+// ---------------------------------------------------------------------------
+
+export interface RAGEvaluationBenchmarkItem {
+  question: string;
+  expectedTopics: string[];
+  expectedSources: string[];
+}
+
+export interface RAGEvaluationBenchmarkResult {
+  retrievalScore: string;
+  contextScore: string;
+  latency: string;
+  overallScore: string;
+}
+
+
 
 
 
