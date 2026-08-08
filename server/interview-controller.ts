@@ -45,6 +45,7 @@ import { decideNextAction } from "@/ai/decision-engine";
 import { applyTurnToState } from "@/ai/state-updater";
 import { detectContradiction } from "@/ai/contradiction-detector";
 import { generateFinalFeedback } from "@/ai/feedback-generator";
+import { defaultInterviewMemoryRAG } from "./interview-memory";
 
 // ---------------------------------------------------------------------------
 // Feedback Mapping Layer
@@ -137,6 +138,13 @@ export async function handleConversationTurn(
 
   // 1. Evaluate answer
   const evaluation: AnswerEvaluation = await evaluateAnswer(question, message, state);
+
+  // Update Candidate Learning Memory
+  await defaultInterviewMemoryRAG.updateCandidateLearningMemory(
+    state.candidateId,
+    question,
+    evaluation
+  );
 
   // 2. Detect contradictions
   const contradiction = await detectContradiction(message, state);
@@ -250,6 +258,14 @@ export async function processAnswer(
     ?? (await generateQuestion(state, plan, curriculum));
 
   const evaluation = await evaluateAnswer(question, answer, state);
+
+  // Update Candidate Learning Memory
+  await defaultInterviewMemoryRAG.updateCandidateLearningMemory(
+    state.candidateId,
+    question,
+    evaluation
+  );
+
   const contradiction = await detectContradiction(answer, state);
   const updatedTwin = updateKnowledgeTwin(state.knowledgeTwin, question, evaluation);
   const decision = decideNextAction(evaluation, state, plan);

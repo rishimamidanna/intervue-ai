@@ -125,6 +125,8 @@ export class FileBackedCandidateMemoryStoreProvider
       previousQuestions: memory.previousQuestions.map(sanitizePrivacySensitiveText),
       weakAreas: memory.weakAreas.map(sanitizePrivacySensitiveText),
       strengths: memory.strengths.map(sanitizePrivacySensitiveText),
+      weaknesses: (memory.weaknesses || []).map(sanitizePrivacySensitiveText),
+      recommendedTopics: (memory.recommendedTopics || []).map(sanitizePrivacySensitiveText),
       performance: memory.performance.map((p) => ({
         ...p,
         notes: p.notes ? sanitizePrivacySensitiveText(p.notes) : undefined,
@@ -173,7 +175,11 @@ export class InterviewMemoryRAG {
    */
   async getOrCreateMemory(candidateId: string): Promise<CandidateMemoryStore> {
     let memory = await this.storeProvider.getMemory(candidateId);
-    if (memory) return memory;
+    if (memory) {
+      if (!memory.weaknesses) memory.weaknesses = [];
+      if (!memory.recommendedTopics) memory.recommendedTopics = [];
+      return memory;
+    }
 
     // Initialize fresh memory store
     memory = {
@@ -181,6 +187,8 @@ export class InterviewMemoryRAG {
       previousQuestions: [],
       weakAreas: [],
       strengths: [],
+      weaknesses: [],
+      recommendedTopics: [],
       performance: [],
     };
 
@@ -232,6 +240,76 @@ export class InterviewMemoryRAG {
       memory.strengths.push(record.topic);
     }
 
+    await this.storeProvider.saveMemory(memory);
+    return memory;
+  }
+
+  /**
+   * Updates candidate learning memory after answer evaluation.
+   */
+  async updateCandidateLearningMemory(
+    candidateId: string,
+    question: { topic: string },
+    evaluation: { coveredConcepts: string[]; missingConcepts: string[]; misconceptions: string[]; correctness: number }
+  ): Promise<CandidateMemoryStore> {
+    const memory = await this.getOrCreateMemory(candidateId);
+
+    // Initialize arrays if they don't exist
+    if (!memory.strengths) memory.strengths = [];
+    if (!memory.weakAreas) memory.weakAreas = [];
+    if (!memory.weaknesses) memory.weaknesses = [];
+    if (!memory.recommendedTopics) memory.recommendedTopics = [];
+
+    const strengthsToAdd = evaluation.coveredConcepts || [];
+    const weaknessesToAdd = [
+      ...(evaluation.missingConcepts || []),
+      ...(evaluation.misconceptions || [])
+    ];
+
+    // Update strengths: add covered concepts, remove from weaknesses/weakAreas/recommendedTopics
+    for (const strength of strengthsToAdd) {
+      const sanitized = sanitizePrivacySensitiveText(strength);
+      if (sanitized && !memory.strengths.includes(sanitized)) {
+        memory.strengths.push(sanitized);
+      }
+      memory.weaknesses = memory.weaknesses.filter((w) => w !== sanitized);
+      memory.weakAreas = memory.weakAreas.filter((w) => w !== sanitized);
+      memory.recommendedTopics = memory.recommendedTopics.filter((t) => t !== sanitized);
+    }
+
+    // Update weaknesses: add missing/misconceptions, remove from strengths
+    for (const weakness of weaknessesToAdd) {
+      const sanitized = sanitizePrivacySensitiveText(weakness);
+      if (sanitized) {
+        if (!memory.weaknesses.includes(sanitized)) {
+          memory.weaknesses.push(sanitized);
+        }
+        if (!memory.weakAreas.includes(sanitized)) {
+          memory.weakAreas.push(sanitized);
+        }
+      }
+      memory.strengths = memory.strengths.filter((s) => s !== sanitized);
+    }
+
+    // Update recommendedTopics (improvement topics)
+    const isStruggling = evaluation.correctness < 6 || weaknessesToAdd.length > 0;
+    if (isStruggling) {
+      const topicsToAdd = [
+        question.topic,
+        ...(evaluation.missingConcepts || [])
+      ];
+      for (const topic of topicsToAdd) {
+        const sanitized = sanitizePrivacySensitiveText(topic);
+        if (sanitized && !memory.recommendedTopics.includes(sanitized)) {
+          memory.recommendedTopics.push(sanitized);
+        }
+      }
+    } else {
+      const sanitizedTopic = sanitizePrivacySensitiveText(question.topic);
+      memory.recommendedTopics = memory.recommendedTopics.filter((t) => t !== sanitizedTopic);
+    }
+
+    // Save to provider
     await this.storeProvider.saveMemory(memory);
     return memory;
   }
@@ -315,14 +393,23 @@ export class InterviewMemoryRAG {
 
     lines.push(`CANDIDATE MEMORY CONTEXT [ID: ${candidateId}]`);
 
-    if (memory.weakAreas.length > 0) {
+    const weaknesses = memory.weaknesses || [];
+    if (weaknesses.length > 0) {
+      lines.push(`Target Weaknesses: ${weaknesses.join(", ")}`);
+    } else if (memory.weakAreas.length > 0) {
       lines.push(`Target Weak Areas: ${memory.weakAreas.join(", ")}`);
     } else {
       lines.push(`Target Weak Areas: None identified yet`);
     }
 
-    if (memory.strengths.length > 0) {
-      lines.push(`Demonstrated Strengths: ${memory.strengths.join(", ")}`);
+    const strengths = memory.strengths || [];
+    if (strengths.length > 0) {
+      lines.push(`Demonstrated Strengths: ${strengths.join(", ")}`);
+    }
+
+    const recommended = memory.recommendedTopics || [];
+    if (recommended.length > 0) {
+      lines.push(`Recommended Topics to Study: ${recommended.join(", ")}`);
     }
 
     if (memory.previousQuestions.length > 0) {

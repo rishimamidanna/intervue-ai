@@ -518,6 +518,8 @@ export const CandidateMemoryStoreSchema = z.object({
   previousQuestions: z.array(z.string()),
   weakAreas: z.array(z.string()),
   strengths: z.array(z.string()),
+  weaknesses: z.array(z.string()).optional(),
+  recommendedTopics: z.array(z.string()).optional(),
   performance: z.array(CandidatePerformanceRecordSchema),
   feedback: z.array(CandidateFeedbackSchema).optional(),
 });
@@ -802,20 +804,19 @@ export const CandidateGraphStateSchema = z.object({
   gaps: z.array(z.string()),
 });
 
+// ---------------------------------------------------------------------------
+// Reasoning-Based Retrieval Schemas
+// ---------------------------------------------------------------------------
 
+export const ReasoningRetrievalLayersSchema = z.object({
+  direct: z.array(RetrievedChunkSchema),
+  prerequisite: z.array(RetrievedChunkSchema),
+  related: z.array(RetrievedChunkSchema),
+});
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+export const ReasoningRetrievalResponseSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  requiredConcepts: z.array(z.string().min(1)).min(1),
+  retrievalLayers: ReasoningRetrievalLayersSchema,
+  reasoning: z.string().min(1, "reasoning is required"),
+});

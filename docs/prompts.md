@@ -1443,3 +1443,82 @@ Return:
 5. Blockers
 
 STOP after this submilestone.
+## Milestone 7.3 — Retrieval Explainability Layer
+
+Role:
+Member 2 (Data + RAG)
+
+Branch:
+feature/data-rag
+
+
+Goal:
+
+Add transparency to retrieval decisions.
+
+
+Inspect:
+
+- hybrid retrieval output
+- candidate-aware ranking
+- context builder
+
+
+Implement:
+
+Retrieval Result
+
+        ↓
+
+Explainability Layer
+
+        ↓
+
+Detailed Retrieval Metadata
+
+
+Add:
+
+- semantic score
+- BM25 score
+- candidate relevance score
+- final score
+- ranking reasons
+
+
+Each result should contain:
+
+{
+ chunkId,
+ content,
+ scores:{
+   semantic,
+   bm25,
+   candidate,
+   final
+ },
+ reasons:[]
+}
+
+
+Reasons should explain:
+
+- keyword match
+- semantic similarity
+- candidate relevance
+
+
+Do NOT modify:
+
+- UI
+- LLM generation
+- API routes
+
+
+Return:
+
+1. Files changed
+2. Example explanation output
+3. Verification steps
+
+STOP.

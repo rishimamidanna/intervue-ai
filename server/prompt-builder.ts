@@ -121,13 +121,34 @@ export function formatUserPromptSections(
       weakAreas.push(...intelProfile.verificationAreas.map((v) => v.topic));
     }
 
+    const weaknesses: string[] = [];
+    if (Array.isArray(rawProfile.weaknesses)) {
+      weaknesses.push(...rawProfile.weaknesses.map(String));
+    }
+    const strengths: string[] = [];
+    if (Array.isArray(rawProfile.strengths)) {
+      strengths.push(...rawProfile.strengths.map(String));
+    }
+    const recommendedTopics: string[] = [];
+    if (Array.isArray(rawProfile.recommendedTopics)) {
+      recommendedTopics.push(...rawProfile.recommendedTopics.map(String));
+    }
+
     let profileBlock = `--- CANDIDATE PROFILE ---
 Candidate Name: ${name}
 Target Role: ${role}
 Experience Level: ${expStr}`;
 
-    if (weakAreas.length > 0) {
+    if (strengths.length > 0) {
+      profileBlock += `\nDemonstrated Strengths: ${Array.from(new Set(strengths)).join(", ")}`;
+    }
+    if (weaknesses.length > 0) {
+      profileBlock += `\nTarget Focus / Weaknesses: ${Array.from(new Set(weaknesses)).join(", ")}`;
+    } else if (weakAreas.length > 0) {
       profileBlock += `\nTarget Focus / Weak Areas: ${Array.from(new Set(weakAreas)).join(", ")}`;
+    }
+    if (recommendedTopics.length > 0) {
+      profileBlock += `\nRecommended Topics: ${Array.from(new Set(recommendedTopics)).join(", ")}`;
     }
 
     sections.push(profileBlock);

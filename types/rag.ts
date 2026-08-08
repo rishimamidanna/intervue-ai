@@ -595,6 +595,8 @@ export interface CandidateMemoryStore {
   previousQuestions: string[];
   weakAreas: string[];
   strengths: string[];
+  weaknesses?: string[];
+  recommendedTopics?: string[];
   performance: CandidatePerformanceRecord[];
   feedback?: CandidateFeedback[];
 }
@@ -894,20 +896,25 @@ export interface CandidateGraphState {
   gaps: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Reasoning-Based Retrieval Contracts
+// ---------------------------------------------------------------------------
 
+/**
+ * Retrieved knowledge grouped by the role it plays in answering a question.
+ */
+export interface ReasoningRetrievalLayers {
+  direct: RetrievedChunk[];
+  prerequisite: RetrievedChunk[];
+  related: RetrievedChunk[];
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Public response returned by the modular reasoning retrieval service.
+ */
+export interface ReasoningRetrievalResponse {
+  query: string;
+  requiredConcepts: string[];
+  retrievalLayers: ReasoningRetrievalLayers;
+  reasoning: string;
+}
