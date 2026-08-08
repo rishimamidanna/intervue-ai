@@ -104,11 +104,12 @@ export function HeroContent() {
             transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
           },
         }}
-        className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.08] mb-6"
+        className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.18] mb-6"
       >
         The Future of <br />
-        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-violet-400">
-          Technical Interviews
+        Technical <br />
+        <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-300 to-cyan-300 drop-shadow-[0_0_25px_rgba(167,139,250,0.4)]">
+          Interviews
         </span>
       </motion.h1>
 
@@ -122,9 +123,10 @@ export function HeroContent() {
             transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
           },
         }}
-        className="text-base sm:text-xl text-neutral-300 font-normal leading-relaxed mb-10 max-w-xl"
+        className="text-base sm:text-lg text-neutral-300/90 font-normal leading-relaxed mb-10 max-w-xl"
       >
-        Adaptive AI interviews that understand, evaluate and unlock true potential.
+        Adaptive AI interviews that understand your skills, <br className="hidden sm:inline" />
+        evaluate your knowledge, and reveal your true potential.
       </motion.p>
 
       {/* Action Button CTA with Magnetic Hover, Glow, Light Sweep, and AI Core Reaction */}

@@ -10,7 +10,7 @@ export interface NetworkTarget {
   color?: string;
 }
 
-export interface NeuralNetworkProps {
+export interface NeuralConnectionsProps {
   /** Core origin position [x, y, z] */
   origin?: [number, number, number];
   /** Targets array */
@@ -20,23 +20,22 @@ export interface NeuralNetworkProps {
 }
 
 const DEFAULT_TARGETS: NetworkTarget[] = [
-  { id: "adaptive", position: [0.1, 1.9, -0.8], color: "#c084fc" },
-  { id: "digital-twin", position: [2.4, 0.7, 0.1], color: "#38bdf8" },
-  { id: "reflection", position: [2.2, -1.0, 0.3], color: "#a78bfa" },
-  { id: "knowledge-base", position: [-1.2, -1.4, 0.1], color: "#60a5fa" },
-  { id: "rag", position: [-2.6, -0.5, 0.2], color: "#38bdf8" },
+  { id: "rag", position: [-2.5, -0.3, 0.1], color: "#38bdf8" },
+  { id: "adaptive", position: [0.3, 1.8, -0.6], color: "#c084fc" },
+  { id: "digital-twin", position: [2.7, 0.4, 0.1], color: "#38bdf8" },
+  { id: "reflection", position: [0.3, -1.6, 0.1], color: "#a78bfa" },
 ];
 
 /**
- * 3D Neural Network component for INTERVUE AI.
- * Renders glowing 3D Bezier neural filaments connecting the central AI core to 5 circular holographic nodes,
+ * 3D Neural Connections component for INTERVUE AI.
+ * Renders glowing 3D Bezier neural filaments connecting the central AI core to circular intelligence nodes,
  * with animated data packet pulse particles flowing along the curves.
  */
-export function NeuralNetwork({
+export function NeuralConnections({
   origin = [0.3, 0.0, -0.4],
   targets = DEFAULT_TARGETS,
   pulseSpeed = 0.22,
-}: NeuralNetworkProps) {
+}: NeuralConnectionsProps) {
   const networkGroupRef = useRef<Group>(null);
   const pulseGroupRef = useRef<Group>(null);
 
@@ -51,7 +50,7 @@ export function NeuralNetwork({
       const mid = new Vector3()
         .addVectors(start, end)
         .multiplyScalar(0.5);
-      mid.y += 0.3;
+      mid.y += 0.25;
       mid.z += 0.15;
 
       const curve = new QuadraticBezierCurve3(start, mid, end);
@@ -97,7 +96,7 @@ export function NeuralNetwork({
   });
 
   return (
-    <group ref={networkGroupRef} name="neural-network">
+    <group ref={networkGroupRef} name="neural-connections">
       {pathways.map((path) => (
         <group key={`pathway-${path.id}`}>
           {/* Glowing Primary Tube Line */}

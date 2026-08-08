@@ -31,7 +31,7 @@ function pseudoRandom(seed: number): number {
 export function Environment({
   enableParticles = true,
   particleCount = 150,
-  backgroundColor = "#050508",
+  backgroundColor = "#030308",
   fogBounds = [4, 22],
 }: EnvironmentProps) {
   const ringRef = useRef<Mesh>(null);

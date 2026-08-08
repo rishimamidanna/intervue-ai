@@ -22,4 +22,6 @@ export { HeroFocalCore } from "./HeroFocalCore";
 
 export { AIIntelligenceCore } from "./AIIntelligenceCore";
 export { HolographicNode } from "./HolographicNode";
+export { IntelligenceNode } from "./IntelligenceNode";
 export { NeuralNetwork } from "./NeuralNetwork";
+export { NeuralConnections } from "./NeuralConnections";

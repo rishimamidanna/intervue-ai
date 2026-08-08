@@ -7,7 +7,7 @@ import { FloatingObject } from "./FloatingObject";
 
 /**
  * HeroFocalCore component for INTERVUE AI.
- * Premium slow cinematic motion for luxury AI aesthetic.
+ * Scaled-down core sphere positioned at [0.8, -0.2, -0.4] with ultra-thin orbital paths.
  */
 export function HeroFocalCore() {
   const coreRef = useRef<Group>(null);
@@ -19,83 +19,86 @@ export function HeroFocalCore() {
     const time = state.clock.getElapsedTime();
 
     if (coreRef.current) {
-      // Slow, elegant rotation for central core
-      coreRef.current.rotation.y += 0.15 * delta;
-      coreRef.current.rotation.x = Math.sin(time * 0.4) * 0.08;
+      coreRef.current.rotation.y += 0.06 * delta;
+      coreRef.current.rotation.x = Math.sin(time * 0.3) * 0.05;
+
+      const breathScale = 1 + Math.sin(time * 0.8) * 0.025;
+      coreRef.current.scale.setScalar(breathScale);
     }
     if (innerMatRef.current) {
-      // Gentle, subtle breathing emissive pulse
-      innerMatRef.current.emissiveIntensity = 1.2 + Math.sin(time * 0.8) * 0.4;
+      innerMatRef.current.emissiveIntensity = 1.6 + Math.sin(time * 0.8) * 0.4;
     }
     if (ring1Ref.current) {
-      // Slow holographic precession for primary orbital ring
-      ring1Ref.current.rotation.z += 0.12 * delta;
-      ring1Ref.current.rotation.x += 0.08 * delta;
+      ring1Ref.current.rotation.z += 0.05 * delta;
+      ring1Ref.current.rotation.x += 0.03 * delta;
     }
     if (ring2Ref.current) {
-      // Counter-rotating cyan orbital accent ring
-      ring2Ref.current.rotation.z -= 0.1 * delta;
-      ring2Ref.current.rotation.y -= 0.07 * delta;
+      ring2Ref.current.rotation.z -= 0.04 * delta;
+      ring2Ref.current.rotation.y -= 0.03 * delta;
     }
   });
 
   return (
-    <group name="hero-focal-core" position={[0, 0.2, -0.5]}>
-      {/* Floating Central Core Sphere with subtle floating motion */}
-      <FloatingObject floatSpeed={0.6} floatAmplitude={0.12} rotationSpeed={[0.08, 0.15, 0.05]}>
+    <group name="hero-focal-core" position={[0.8, -0.2, -0.4]}>
+      {/* Floating Central Core Sphere (Scaled down ~38%) */}
+      <FloatingObject floatSpeed={0.35} floatAmplitude={0.05} rotationSpeed={[0.02, 0.04, 0.015]}>
         <group ref={coreRef}>
           {/* Inner Glowing Core */}
           <mesh>
-            <icosahedronGeometry args={[0.95, 2]} />
+            <icosahedronGeometry args={[0.46, 3]} />
             <meshStandardMaterial
               ref={innerMatRef}
               color="#1e1b4b"
               emissive="#7c3aed"
-              emissiveIntensity={1.4}
+              emissiveIntensity={1.8}
               roughness={0.15}
               metalness={0.85}
             />
           </mesh>
 
           {/* Outer Holographic Glass Wireframe Shell */}
-          <mesh scale={[1.2, 1.2, 1.2]}>
-            <icosahedronGeometry args={[0.95, 1]} />
+          <mesh scale={[1.15, 1.15, 1.15]}>
+            <icosahedronGeometry args={[0.46, 1]} />
             <meshPhysicalMaterial
               color="#38bdf8"
               wireframe
               transparent
-              opacity={0.65}
+              opacity={0.6}
               emissive="#38bdf8"
-              emissiveIntensity={0.8}
+              emissiveIntensity={1.4}
             />
           </mesh>
         </group>
       </FloatingObject>
 
-      {/* Primary Orbital Titanium Ring */}
+      {/* Ultra-Thin Orbital Purple Path */}
       <group ref={ring1Ref} rotation={[Math.PI / 4, 0, 0]}>
         <mesh>
-          <torusGeometry args={[2.1, 0.035, 16, 100]} />
+          <torusGeometry args={[0.88, 0.005, 16, 100]} />
           <meshStandardMaterial
             color="#1e1b4b"
             emissive="#8b5cf6"
-            emissiveIntensity={0.9}
-            metalness={0.95}
+            emissiveIntensity={1.3}
+            metalness={0.9}
             roughness={0.1}
+            transparent
+            opacity={0.7}
           />
         </mesh>
       </group>
 
-      {/* Secondary Cyan Glow Orbital Ring */}
+      {/* Ultra-Thin Orbital Cyan Path */}
       <group ref={ring2Ref} rotation={[-Math.PI / 3, Math.PI / 6, 0]}>
         <mesh>
-          <torusGeometry args={[2.6, 0.025, 16, 100]} />
+          <torusGeometry args={[1.08, 0.004, 16, 100]} />
           <meshStandardMaterial
             color="#0f172a"
             emissive="#38bdf8"
-            emissiveIntensity={1.1}
-            metalness={0.95}
+            emissiveIntensity={1.5}
+            metalness={0.9}
             roughness={0.1}
+            transparent
+            opacity={0.7}
           />
         </mesh>
       </group>
