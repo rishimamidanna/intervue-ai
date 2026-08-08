@@ -1,17 +1,20 @@
 /**
  * server/candidate-service.ts
  *
- * Candidate Data Service
+ * Candidate Data & Intelligence Service
  *
- * Loads and retrieves candidate profiles from the hackathon candidate data.
- * Delegates file loading and validation to the Data Loading Layer (lib/loaders/candidate-loader).
- * Provides typed access to candidate data for AI and server modules.
+ * Loads and retrieves candidate profiles from candidate data, runs candidate intelligence analysis,
+ * and builds structured RAG interview contexts.
+ * Delegates file loading to candidate-loader, analysis to candidate-analyzer, and context building to context-builder.
  *
  * Owner: Member 2 (Backend / API)
  */
 
-import type { CandidateProfile } from "@/types/candidate";
+import type { CandidateProfile, CandidateIntelligenceProfile, StructuredInterviewContext } from "@/types/candidate";
 import { loadCandidates as loadCandidatesFromLoader, loadCandidateById as loadCandidateByIdFromLoader } from "@/lib/loaders/candidate-loader";
+import { analyzeCandidateProfile } from "@/lib/analyzer/candidate-analyzer";
+import { getRelevantKnowledgeForCandidate } from "./curriculum-service";
+import { buildInterviewContext } from "@/lib/rag/context-builder";
 
 // ---------------------------------------------------------------------------
 // Data Loading Cache
@@ -46,6 +49,25 @@ export async function getCandidateById(
     return _candidateCache.find((c) => c.member.id === candidateId) ?? null;
   }
   return loadCandidateByIdFromLoader(candidateId);
+}
+
+/**
+ * Generates an end-to-end StructuredInterviewContext for a candidate by ID.
+ * Integrates candidate profile validation, intelligence analysis, curriculum retrieval, and context synthesis.
+ *
+ * @param candidateId - Candidate identifier (e.g. "CAND-001")
+ * @returns StructuredInterviewContext or null if candidate not found
+ */
+export async function getInterviewContextForCandidate(
+  candidateId: string
+): Promise<StructuredInterviewContext | null> {
+  const candidate = await getCandidateById(candidateId);
+  if (!candidate) return null;
+
+  const profile = analyzeCandidateProfile(candidate);
+  const retrievalContext = await getRelevantKnowledgeForCandidate(profile);
+
+  return buildInterviewContext(profile, retrievalContext);
 }
 
 /**

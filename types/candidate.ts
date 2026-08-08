@@ -1,13 +1,14 @@
 /**
  * types/candidate.ts
  *
- * Candidate profile contracts matching the official hackathon Candidate Profile schema
- * and Candidate Intelligence Analyzer output.
+ * Candidate profile contracts matching the official hackathon Candidate Profile schema,
+ * Candidate Intelligence Analyzer output, and RAG Context Builder output (Milestone 1.5).
  *
  * Owner: Shared (types/ directory)
  */
 
 import type { TopicKnowledge } from "./interview";
+import type { CurriculumKnowledgeUnit } from "./curriculum";
 
 export interface CandidateMember {
   id: string;
@@ -84,4 +85,35 @@ export interface CandidateIntelligenceProfile {
   priorityTopics: string[];
   weaknessSignals: string[];
   strengthSignals: string[];
+}
+
+/**
+ * Structured RAG Interview Context produced by RAG Context Builder (Milestone 1.5).
+ * Combines candidate intelligence and retrieved curriculum knowledge into an AI-ready context.
+ */
+export interface StructuredInterviewContext {
+  /** Candidate identifier */
+  candidateId: string;
+  /** Human-readable narrative summary of candidate profile */
+  candidateSummary: string;
+  /** Identified candidate strengths */
+  strengths: string[];
+  /** Identified candidate weaknesses and gaps */
+  weaknesses: string[];
+  /** Relevant curriculum topics retrieved */
+  relevantTopics: string[];
+  /** Core concepts to evaluate in the interview */
+  conceptsToEvaluate: string[];
+  /** Alias for conceptsToEvaluate (matching milestone example) */
+  relevantConcepts: string[];
+  /** Primary focus areas for the interview session */
+  focusAreas: string[];
+  /** Alias for focusAreas (recommended interview focus) */
+  recommendedInterviewFocus: string[];
+  /** Array of retrieved CurriculumKnowledgeUnit objects (RAG context) */
+  retrievedKnowledge: CurriculumKnowledgeUnit[];
+  /** Overall relevance confidence score (0.00 to 1.00) */
+  relevanceScore: number;
+  /** Pre-formatted structured prompt text ready for AI question generation */
+  formattedPromptContext: string;
 }
