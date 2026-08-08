@@ -16,10 +16,13 @@
 import type {
   CandidateAssessment,
   DifficultyDecision,
+  LightweightDifficultyInput,
+  LightweightDifficultyOutput,
 } from "@/types/rag";
 import type { CandidateProfile, CandidateIntelligenceProfile } from "@/types/candidate";
-import { DifficultyDecisionSchema } from "@/schemas/rag.schema";
+import { DifficultyDecisionSchema, LightweightDifficultyOutputSchema } from "@/schemas/rag.schema";
 import { strictValidate } from "@/lib/validation";
+import { defaultInterviewMemoryRAG } from "./interview-memory";
 
 export class DynamicDifficultyEngine {
   // Threshold Constants (Configurable rules)
@@ -144,6 +147,84 @@ export class DynamicDifficultyEngine {
       updatedProfile: updatedProfile as CandidateProfile | CandidateIntelligenceProfile,
     };
   }
+}
+
+/**
+ * Milestone 7.34 — Lightweight Dynamic Difficulty Engine.
+ * Calculates next question difficulty based on candidate score:
+ * - score >= 80 -> Increase difficulty
+ * - score between 50-80 -> Maintain difficulty
+ * - score < 50 -> Decrease difficulty
+ * Stores history in candidate memory if candidateId is provided.
+ */
+export async function calculateLightweightDifficulty(
+  input: LightweightDifficultyInput,
+  candidateId?: string
+): Promise<LightweightDifficultyOutput> {
+  // Support both 0-100 and 0-1 score scale
+  const normScore = input.score <= 1.0 && input.score > 0 ? input.score * 100 : input.score;
+  const current = (input.currentDifficulty || "medium").trim().toLowerCase();
+
+  let nextDifficulty = input.currentDifficulty;
+  let reason = "Satisfactory performance";
+
+  if (normScore >= 80) {
+    if (current === "easy") {
+      nextDifficulty = "medium";
+    } else if (current === "medium") {
+      nextDifficulty = "hard";
+    } else if (current === "beginner") {
+      nextDifficulty = "Intermediate";
+    } else if (current === "intermediate") {
+      nextDifficulty = "Advanced";
+    } else {
+      nextDifficulty = input.currentDifficulty;
+    }
+    reason = "Strong performance";
+  } else if (normScore < 50) {
+    if (current === "hard") {
+      nextDifficulty = "medium";
+    } else if (current === "medium") {
+      nextDifficulty = "easy";
+    } else if (current === "advanced") {
+      nextDifficulty = "Intermediate";
+    } else if (current === "intermediate") {
+      nextDifficulty = "Beginner";
+    } else {
+      nextDifficulty = input.currentDifficulty;
+    }
+    reason = "Needs reinforcement";
+  } else {
+    nextDifficulty = input.currentDifficulty;
+    reason = "Satisfactory performance";
+  }
+
+  const output: LightweightDifficultyOutput = {
+    nextDifficulty,
+    reason,
+  };
+
+  if (candidateId) {
+    try {
+      const memory = await defaultInterviewMemoryRAG.getOrCreateMemory(candidateId);
+      memory.performance.push({
+        topic: `Difficulty:${input.currentDifficulty}->${nextDifficulty}`,
+        score: Number((normScore / 100).toFixed(2)),
+        attempts: 1,
+        timestamp: new Date().toISOString(),
+        notes: reason,
+      });
+      await (defaultInterviewMemoryRAG as any).storeProvider.saveMemory(memory);
+    } catch {
+      // Non-blocking fallback
+    }
+  }
+
+  return strictValidate(
+    LightweightDifficultyOutputSchema,
+    output,
+    "Lightweight Difficulty Output"
+  );
 }
 
 // ---------------------------------------------------------------------------

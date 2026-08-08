@@ -934,3 +934,18 @@ export interface LightweightGapOutput {
   coveredConcepts: string[];
   severity: "low" | "medium" | "high";
 }
+
+// ---------------------------------------------------------------------------
+// Lightweight Dynamic Difficulty Engine Contracts (Milestone 7.34)
+// ---------------------------------------------------------------------------
+
+export interface LightweightDifficultyInput {
+  score: number;
+  confidence?: string;
+  currentDifficulty: string;
+}
+
+export interface LightweightDifficultyOutput {
+  nextDifficulty: string;
+  reason: string;
+}

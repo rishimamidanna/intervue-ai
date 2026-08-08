@@ -826,3 +826,8 @@ export const LightweightGapOutputSchema = z.object({
   coveredConcepts: z.array(z.string()),
   severity: z.enum(["low", "medium", "high"]),
 });
+
+export const LightweightDifficultyOutputSchema = z.object({
+  nextDifficulty: z.string(),
+  reason: z.string(),
+});
