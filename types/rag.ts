@@ -872,6 +872,29 @@ export interface ReflectionEvaluationResult {
   improvements: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Skill Graph Intelligence Contracts (Milestone 7.30)
+// ---------------------------------------------------------------------------
+
+export interface SkillGraphNode {
+  id: string;
+  type: "skill" | "concept" | "topic" | "prerequisite";
+  name: string;
+}
+
+export interface SkillGraphEdge {
+  source: string;
+  target: string;
+  relation: "requires" | "related_to" | "prerequisite_of" | "weak_in";
+}
+
+export interface CandidateGraphState {
+  candidate: string;
+  skills: Record<string, number>;
+  gaps: string[];
+}
+
+
 
 
 

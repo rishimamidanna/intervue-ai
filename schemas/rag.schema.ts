@@ -780,6 +780,29 @@ export const ReflectionEvaluationResultSchema = z.object({
   improvements: z.array(z.string()),
 });
 
+// ---------------------------------------------------------------------------
+// Skill Graph Intelligence Schemas (Milestone 7.30)
+// ---------------------------------------------------------------------------
+
+export const SkillGraphNodeSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(["skill", "concept", "topic", "prerequisite"]),
+  name: z.string().min(1),
+});
+
+export const SkillGraphEdgeSchema = z.object({
+  source: z.string().min(1),
+  target: z.string().min(1),
+  relation: z.enum(["requires", "related_to", "prerequisite_of", "weak_in"]),
+});
+
+export const CandidateGraphStateSchema = z.object({
+  candidate: z.string().min(1),
+  skills: z.record(z.string(), z.number()),
+  gaps: z.array(z.string()),
+});
+
+
 
 
 
