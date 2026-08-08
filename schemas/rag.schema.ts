@@ -820,3 +820,9 @@ export const ReasoningRetrievalResponseSchema = z.object({
   retrievalLayers: ReasoningRetrievalLayersSchema,
   reasoning: z.string().min(1, "reasoning is required"),
 });
+
+export const LightweightGapOutputSchema = z.object({
+  missingConcepts: z.array(z.string()),
+  coveredConcepts: z.array(z.string()),
+  severity: z.enum(["low", "medium", "high"]),
+});

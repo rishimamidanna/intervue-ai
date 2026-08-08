@@ -16,8 +16,10 @@
 import type {
   KnowledgeGap,
   KnowledgeGapResponse,
+  LightweightGapInput,
+  LightweightGapOutput,
 } from "@/types/rag";
-import { KnowledgeGapResponseSchema } from "@/schemas/rag.schema";
+import { KnowledgeGapResponseSchema, LightweightGapOutputSchema } from "@/schemas/rag.schema";
 import { strictValidate } from "@/lib/validation";
 import { defaultQueryAnalyzer } from "./query-analyzer";
 import { defaultInterviewMemoryRAG } from "./interview-memory";
@@ -121,6 +123,78 @@ export class KnowledgeGapDetector {
       "Knowledge Gap Response"
     );
   }
+}
+
+/**
+ * Milestone 7.33 — Lightweight Concept Knowledge Gap Detection.
+ * Compares expected concepts against candidate answer, outputs missing/covered concepts & severity,
+ * and updates candidate memory store if candidateId is supplied.
+ *
+ * @param input - LightweightGapInput (question, expectedConcepts, candidateAnswer)
+ * @param candidateId - Optional candidate ID to save detected gaps into persistent memory
+ * @returns LightweightGapOutput (missingConcepts, coveredConcepts, severity)
+ */
+export async function detectLightweightKnowledgeGaps(
+  input: LightweightGapInput,
+  candidateId?: string
+): Promise<LightweightGapOutput> {
+  const { expectedConcepts, candidateAnswer } = input;
+  const normalizedAnswer = (candidateAnswer || "").trim().toLowerCase();
+
+  const coveredConcepts: string[] = [];
+  const missingConcepts: string[] = [];
+
+  for (const concept of expectedConcepts) {
+    const normConcept = concept.trim().toLowerCase();
+    const terms = normConcept.split(/\s+/).filter((t) => t.length > 2);
+
+    const isCovered =
+      normalizedAnswer.includes(normConcept) ||
+      (terms.length > 0 && terms.some((term) => normalizedAnswer.includes(term)));
+
+    if (isCovered && normalizedAnswer.length > 0) {
+      coveredConcepts.push(concept);
+    } else {
+      missingConcepts.push(concept);
+    }
+  }
+
+  let severity: "low" | "medium" | "high" = "low";
+  if (expectedConcepts.length > 0) {
+    if (missingConcepts.length === expectedConcepts.length) {
+      severity = "high";
+    } else if (missingConcepts.length > 0) {
+      severity = "medium";
+    } else {
+      severity = "low";
+    }
+  }
+
+  const rawOutput: LightweightGapOutput = {
+    missingConcepts,
+    coveredConcepts,
+    severity,
+  };
+
+  if (candidateId) {
+    const correctnessScore = severity === "high" ? 2 : severity === "medium" ? 5 : 9;
+    await defaultInterviewMemoryRAG.updateCandidateLearningMemory(
+      candidateId,
+      { topic: input.question || "General" },
+      {
+        coveredConcepts,
+        missingConcepts,
+        misconceptions: [],
+        correctness: correctnessScore,
+      }
+    );
+  }
+
+  return strictValidate(
+    LightweightGapOutputSchema,
+    rawOutput,
+    "Lightweight Gap Output"
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -918,3 +918,19 @@ export interface ReasoningRetrievalResponse {
   retrievalLayers: ReasoningRetrievalLayers;
   reasoning: string;
 }
+
+// ---------------------------------------------------------------------------
+// Lightweight Knowledge Gap Detector Contracts (Milestone 7.33)
+// ---------------------------------------------------------------------------
+
+export interface LightweightGapInput {
+  question: string;
+  expectedConcepts: string[];
+  candidateAnswer: string;
+}
+
+export interface LightweightGapOutput {
+  missingConcepts: string[];
+  coveredConcepts: string[];
+  severity: "low" | "medium" | "high";
+}
