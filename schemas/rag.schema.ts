@@ -831,3 +831,10 @@ export const LightweightDifficultyOutputSchema = z.object({
   nextDifficulty: z.string(),
   reason: z.string(),
 });
+
+export const LightweightReflectionOutputSchema = z.object({
+  quality: z.enum(["good", "needs_review"]),
+  confidence: z.string(),
+  issues: z.array(z.string()),
+  recommendation: z.string().optional(),
+});

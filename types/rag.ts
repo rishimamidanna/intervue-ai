@@ -949,3 +949,21 @@ export interface LightweightDifficultyOutput {
   nextDifficulty: string;
   reason: string;
 }
+
+// ---------------------------------------------------------------------------
+// Lightweight Self Reflection Layer Contracts (Milestone 7.35)
+// ---------------------------------------------------------------------------
+
+export interface LightweightReflectionInput {
+  answer: string;
+  context?: string | boolean | any[];
+  expectedConcepts?: string[];
+  confidence?: "high" | "medium" | "low" | number | string;
+}
+
+export interface LightweightReflectionOutput {
+  quality: "good" | "needs_review";
+  confidence: string;
+  issues: string[];
+  recommendation?: string;
+}

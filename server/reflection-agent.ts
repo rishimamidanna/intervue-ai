@@ -17,9 +17,11 @@ import type {
   RetrievedChunk,
   ReflectionEvaluationResult,
   ReflectionEvaluationChecks,
+  LightweightReflectionInput,
+  LightweightReflectionOutput,
 } from "@/types/rag";
 import type { CandidateProfile, CandidateIntelligenceProfile } from "@/types/candidate";
-import { ReflectionEvaluationResultSchema } from "@/schemas/rag.schema";
+import { ReflectionEvaluationResultSchema, LightweightReflectionOutputSchema } from "@/schemas/rag.schema";
 import { strictValidate } from "@/lib/validation";
 import { defaultHallucinationGuard } from "./hallucination-guard";
 import { defaultQueryAnalyzer } from "./query-analyzer";
@@ -141,6 +143,94 @@ export class ReflectionAgent {
       "Reflection Evaluation Result"
     );
   }
+}
+
+/**
+ * Milestone 7.35 — Lightweight Self Reflection Layer.
+ * Checks:
+ * 1. Context availability (Does the answer have supporting retrieved context?)
+ * 2. Confidence score (Is confidence above acceptable threshold?)
+ * 3. Concept coverage (Does the response contain expected concepts?)
+ *
+ * Output: { quality: "good" | "needs_review", confidence: string, issues: string[], recommendation?: string }
+ */
+export function performLightweightReflection(
+  input: LightweightReflectionInput
+): LightweightReflectionOutput {
+  const { answer, context, expectedConcepts, confidence } = input;
+  const issues: string[] = [];
+  const normalizedAnswer = (answer || "").toLowerCase().trim();
+
+  // 1. Context Availability Check
+  const hasContext =
+    context !== undefined &&
+    context !== null &&
+    context !== false &&
+    (typeof context === "string" ? context.trim().length > 0 : true) &&
+    (Array.isArray(context) ? context.length > 0 : true);
+
+  if (!hasContext) {
+    issues.push("Missing retrieved context");
+  }
+
+  // 2. Confidence Score Check
+  let resolvedConfidence = "high";
+  if (typeof confidence === "string") {
+    resolvedConfidence = confidence.toLowerCase();
+  } else if (typeof confidence === "number") {
+    resolvedConfidence = confidence >= 0.75 ? "high" : confidence >= 0.5 ? "medium" : "low";
+  }
+
+  if (resolvedConfidence === "low") {
+    issues.push("Low confidence score");
+  }
+
+  // 3. Concept Coverage Check
+  if (expectedConcepts && expectedConcepts.length > 0) {
+    let hits = 0;
+    for (const concept of expectedConcepts) {
+      const normConcept = concept.trim().toLowerCase();
+      const terms = normConcept.split(/\s+/).filter((t) => t.length > 2);
+      if (
+        normalizedAnswer.includes(normConcept) ||
+        (terms.length > 0 && terms.some((term) => normalizedAnswer.includes(term)))
+      ) {
+        hits++;
+      }
+    }
+
+    const coverageRatio = hits / expectedConcepts.length;
+    if (hits === 0 || coverageRatio < 0.34) {
+      issues.push("Low concept coverage");
+    }
+  }
+
+  // Determine Quality & Recommendation
+  const quality: "good" | "needs_review" = issues.length === 0 ? "good" : "needs_review";
+  let recommendation: string | undefined;
+
+  if (issues.length > 0) {
+    if (issues.includes("Missing retrieved context")) {
+      recommendation = "Retry with improved context";
+    } else if (issues.includes("Low confidence score")) {
+      recommendation = "Review response context and confidence factors";
+    } else {
+      recommendation = "Review response context and concepts";
+    }
+  }
+
+  const rawOutput: LightweightReflectionOutput = {
+    quality,
+    confidence: resolvedConfidence,
+    issues,
+    ...(recommendation ? { recommendation } : {}),
+  };
+
+  return strictValidate(
+    LightweightReflectionOutputSchema,
+    rawOutput,
+    "Lightweight Reflection Output"
+  );
 }
 
 // ---------------------------------------------------------------------------
