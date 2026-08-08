@@ -1,7 +1,7 @@
 /**
  * schemas/curriculum.schema.ts
  *
- * Zod validation schema for Curriculum Day, Normalized Curriculum & Concept data.
+ * Zod validation schema for Curriculum Day, Normalized Curriculum, Concept & Enriched Concept data.
  * Ensures curriculum items loaded from curriculum.json adhere to expected specifications.
  *
  * Owner: Member 2 (Data + RAG)
@@ -92,3 +92,51 @@ export const CurriculumConceptSchema = z.object({
 });
 
 export const CurriculumConceptArraySchema = z.array(CurriculumConceptSchema);
+
+// ---------------------------------------------------------------------------
+// Curriculum Concept Metadata Enrichment Schemas (Milestone 3.3)
+// ---------------------------------------------------------------------------
+
+export const ConceptDifficultyLevelSchema = z.enum([
+  "Beginner",
+  "Intermediate",
+  "Advanced",
+]);
+
+export const ConceptSourceMappingSchema = z.object({
+  file: z.string().min(1),
+  day: z.number().int().min(1),
+  uri: z.string().min(1),
+  topic: z.string().min(1),
+  module: z.string().min(1),
+});
+
+export const EnrichedConceptMetadataSchema = z.object({
+  difficultyLevel: ConceptDifficultyLevelSchema,
+  category: z.string().min(1),
+  conceptCountInDay: z.number().int().min(0),
+  toolCount: z.number().int().min(0),
+  isAgentic: z.boolean(),
+  isRagFoundation: z.boolean(),
+});
+
+export const EnrichedCurriculumConceptSchema = z.object({
+  id: z.string().min(1),
+  conceptName: z.string().min(1),
+  difficultyLevel: ConceptDifficultyLevelSchema,
+  category: z.string().min(1),
+  keywords: z.array(z.string()).min(1),
+  relatedConcepts: z.array(z.string()),
+  relatedTopics: z.array(z.string()),
+  sourceDay: z.number().int().min(1),
+  sourceTopic: z.string().min(1),
+  module: z.string().min(1),
+  tools: z.array(z.string()),
+  description: z.string().min(1),
+  sourceMapping: ConceptSourceMappingSchema,
+  metadata: EnrichedConceptMetadataSchema,
+});
+
+export const EnrichedCurriculumConceptArraySchema = z.array(
+  EnrichedCurriculumConceptSchema
+);

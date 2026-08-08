@@ -1,7 +1,7 @@
 /**
  * types/curriculum.ts
  *
- * Curriculum structure, normalized curriculum & extracted concept contracts.
+ * Curriculum structure, normalized curriculum, concept extraction & concept enrichment contracts.
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG) updated
  */
@@ -96,3 +96,48 @@ export interface CurriculumConcept {
 }
 
 export type ConceptIndex = Record<string, CurriculumConcept>;
+
+// ---------------------------------------------------------------------------
+// Curriculum Concept Metadata Enrichment (Milestone 3.3)
+// ---------------------------------------------------------------------------
+
+export type ConceptDifficultyLevel = "Beginner" | "Intermediate" | "Advanced";
+
+export interface ConceptSourceMapping {
+  file: string;
+  day: number;
+  uri: string;
+  topic: string;
+  module: string;
+}
+
+export interface EnrichedConceptMetadata {
+  difficultyLevel: ConceptDifficultyLevel;
+  category: string;
+  conceptCountInDay: number;
+  toolCount: number;
+  isAgentic: boolean;
+  isRagFoundation: boolean;
+}
+
+/**
+ * Enriched curriculum concept representation ready for RAG retrieval and indexing.
+ */
+export interface EnrichedCurriculumConcept {
+  id: string;
+  conceptName: string;
+  difficultyLevel: ConceptDifficultyLevel;
+  category: string;
+  keywords: string[];
+  relatedConcepts: string[];
+  relatedTopics: string[];
+  sourceDay: number;
+  sourceTopic: string;
+  module: string;
+  tools: string[];
+  description: string;
+  sourceMapping: ConceptSourceMapping;
+  metadata: EnrichedConceptMetadata;
+}
+
+export type EnrichedConceptIndex = Record<string, EnrichedCurriculumConcept>;

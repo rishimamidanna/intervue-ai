@@ -1,10 +1,11 @@
 /**
  * server/curriculum-service.ts
  *
- * Curriculum Data Service, Normalizer & Concept Extractor (Milestone 3.1 & 3.2)
+ * Curriculum Data Service, Normalizer, Concept Extractor & Concept Enricher (Milestone 3.1, 3.2 & 3.3)
  *
- * Loads, validates, indexes, normalizes, and extracts concepts from the hackathon curriculum JSON.
- * Provides typed, O(1) lookups for raw curriculum, normalized curriculum documents, and individual concepts.
+ * Loads, validates, indexes, normalizes, extracts, and enriches concepts from the hackathon curriculum JSON.
+ * Provides typed, O(1) lookups for raw curriculum, normalized curriculum documents, extracted concepts,
+ * and retrieval-ready enriched concepts.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -15,11 +16,14 @@ import type {
   NormalizedCurriculumItem,
   NormalizedCurriculumIndex,
   CurriculumConcept,
+  EnrichedCurriculumConcept,
+  ConceptDifficultyLevel,
 } from "@/types/curriculum";
 import {
   CurriculumArraySchema,
   NormalizedCurriculumItemSchema,
   CurriculumConceptSchema,
+  EnrichedCurriculumConceptSchema,
 } from "@/schemas/curriculum.schema";
 import { safeValidate, strictValidate } from "@/lib/validation";
 
@@ -30,6 +34,7 @@ import { safeValidate, strictValidate } from "@/lib/validation";
 let _curriculumCache: CurriculumDay[] | null = null;
 let _normalizedCache: NormalizedCurriculumItem[] | null = null;
 let _extractedConceptsCache: CurriculumConcept[] | null = null;
+let _enrichedConceptsCache: EnrichedCurriculumConcept[] | null = null;
 
 /**
  * Loads and validates the full curriculum as an ordered array.
@@ -331,6 +336,162 @@ export async function getConceptByName(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Curriculum Concept Metadata Enrichment (Milestone 3.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Deterministically enriches an extracted CurriculumConcept with retrieval-ready
+ * metadata, difficulty level, category, keywords, related concepts, and source mapping.
+ *
+ * @param concept - Base CurriculumConcept
+ * @param allConcepts - Optional list of all extracted concepts for relation linking
+ * @returns EnrichedCurriculumConcept
+ */
+export function enrichConcept(
+  concept: CurriculumConcept,
+  allConcepts?: CurriculumConcept[]
+): EnrichedCurriculumConcept {
+  // 1. Difficulty Level (Deterministic rule by curriculum progression)
+  let difficultyLevel: ConceptDifficultyLevel = "Intermediate";
+  if (concept.sourceDay <= 2) {
+    difficultyLevel = "Beginner";
+  } else if (concept.sourceDay >= 6) {
+    difficultyLevel = "Advanced";
+  }
+
+  // 2. Category Grouping
+  const category = concept.module || "General AI Engineering";
+
+  // 3. Related Concepts
+  let relatedConcepts: string[] = [];
+  if (allConcepts) {
+    relatedConcepts = Array.from(
+      new Set(
+        allConcepts
+          .filter(
+            (c) =>
+              (c.sourceDay === concept.sourceDay || c.module === concept.module) &&
+              c.conceptName !== concept.conceptName
+          )
+          .map((c) => c.conceptName)
+      )
+    );
+  }
+
+  // 4. Related Topics
+  let relatedTopics: string[] = [concept.sourceTopic];
+  if (allConcepts) {
+    relatedTopics = Array.from(
+      new Set(
+        allConcepts
+          .filter(
+            (c) =>
+              Math.abs(c.sourceDay - concept.sourceDay) <= 1 ||
+              c.module === concept.module
+          )
+          .map((c) => c.sourceTopic)
+      )
+    );
+  }
+
+  // 5. Expanded Keywords
+  const keywordsSet = new Set<string>(concept.relatedKeywords);
+  keywordsSet.add(category.toLowerCase());
+  keywordsSet.add(difficultyLevel.toLowerCase());
+  keywordsSet.add(`day ${concept.sourceDay}`);
+  const expandedKeywords = Array.from(keywordsSet);
+
+  // 6. Source Mapping
+  const sourceMapping = {
+    file: "curriculum.json",
+    day: concept.sourceDay,
+    uri: `data/curriculum.json#day=${concept.sourceDay}`,
+    topic: concept.sourceTopic,
+    module: concept.module,
+  };
+
+  // 7. Rich Metadata
+  const metadata = {
+    difficultyLevel,
+    category,
+    conceptCountInDay: relatedConcepts.length + 1,
+    toolCount: concept.tools.length,
+    isAgentic: concept.sourceDay >= 6,
+    isRagFoundation: concept.sourceDay <= 4,
+  };
+
+  const rawEnriched: EnrichedCurriculumConcept = {
+    id: concept.id,
+    conceptName: concept.conceptName,
+    difficultyLevel,
+    category,
+    keywords: expandedKeywords,
+    relatedConcepts,
+    relatedTopics,
+    sourceDay: concept.sourceDay,
+    sourceTopic: concept.sourceTopic,
+    module: concept.module,
+    tools: concept.tools,
+    description: concept.description,
+    sourceMapping,
+    metadata,
+  };
+
+  return strictValidate(
+    EnrichedCurriculumConceptSchema,
+    rawEnriched,
+    `Enriched Concept ${concept.conceptName}`
+  );
+}
+
+/**
+ * Loads, extracts, and enriches all curriculum concepts.
+ * Cached in memory.
+ *
+ * @returns Array of EnrichedCurriculumConcept objects
+ */
+export async function loadEnrichedConcepts(): Promise<
+  EnrichedCurriculumConcept[]
+> {
+  if (_enrichedConceptsCache) return _enrichedConceptsCache;
+
+  const baseConcepts = await loadExtractedConcepts();
+  _enrichedConceptsCache = baseConcepts.map((c) => enrichConcept(c, baseConcepts));
+  return _enrichedConceptsCache;
+}
+
+/**
+ * Retrieves all enriched concepts for a given curriculum day number.
+ *
+ * @param day - Day number (1-indexed)
+ * @returns Array of EnrichedCurriculumConcept objects
+ */
+export async function getEnrichedConceptsByDay(
+  day: number
+): Promise<EnrichedCurriculumConcept[]> {
+  const allEnriched = await loadEnrichedConcepts();
+  return allEnriched.filter((c) => c.sourceDay === day);
+}
+
+/**
+ * Retrieves an enriched concept by name or concept ID.
+ *
+ * @param name - Concept name or search string
+ * @returns EnrichedCurriculumConcept or null if not found
+ */
+export async function getEnrichedConceptByName(
+  name: string
+): Promise<EnrichedCurriculumConcept | null> {
+  const allEnriched = await loadEnrichedConcepts();
+  const searchLower = name.trim().toLowerCase();
+  return (
+    allEnriched.find(
+      (c) => c.conceptName.toLowerCase() === searchLower || c.id === name
+    ) ?? null
+  );
+}
+
 /**
  * Clears curriculum caches (useful for testing or dynamic reloads).
  */
@@ -338,4 +499,5 @@ export function clearCurriculumCache(): void {
   _curriculumCache = null;
   _normalizedCache = null;
   _extractedConceptsCache = null;
+  _enrichedConceptsCache = null;
 }
