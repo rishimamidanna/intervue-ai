@@ -1,7 +1,7 @@
 /**
  * schemas/rag.schema.ts
  *
- * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage, Hybrid Retrieval & Candidate-Aware Ranking.
+ * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage, Hybrid Retrieval, Candidate-Aware Ranking & Context Builder.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -145,4 +145,31 @@ export const RetrievalResponseSchema = z.object({
   totalRetrieved: z.number().int().min(0),
   durationMs: z.number().min(0),
   retrievalSource: z.string().min(1),
+});
+
+// ---------------------------------------------------------------------------
+// Context Builder Schemas (Milestone 7.1)
+// ---------------------------------------------------------------------------
+
+export const ContextSourceReferenceSchema = z.object({
+  chunkId: z.string().min(1, "chunkId is required"),
+  topic: z.string().optional(),
+  concept: z.string().optional(),
+  score: z.number().optional(),
+  metadata: ChunkMetadataSchema,
+});
+
+export const ContextBuilderOptionsSchema = z.object({
+  maxContextLength: z.number().int().positive().optional(),
+  maxChunks: z.number().int().positive().optional(),
+  headerPrefix: z.string().optional(),
+  includeMetadataHeader: z.boolean().optional(),
+});
+
+export const FormattedContextResponseSchema = z.object({
+  context: z.string(),
+  sources: z.array(ContextSourceReferenceSchema),
+  totalChunksUsed: z.number().int().min(0),
+  characterCount: z.number().int().min(0),
+  truncated: z.boolean(),
 });

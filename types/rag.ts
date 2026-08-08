@@ -1,7 +1,7 @@
 /**
  * types/rag.ts
  *
- * RAG, Semantic Chunking, Embedding, Vector Storage, Retrieval, Hybrid Fusion & Candidate-Aware Ranking Contracts (Milestones 4, 5 & 6)
+ * RAG, Semantic Chunking, Embedding, Vector Storage, Retrieval, Hybrid Fusion, Candidate Ranking & Context Builder Contracts (Milestones 4, 5, 6 & 7.1)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
@@ -169,4 +169,32 @@ export interface RetrievalResponse {
   totalRetrieved: number;
   durationMs: number;
   retrievalSource: RetrievalSource;
+}
+
+// ---------------------------------------------------------------------------
+// Context Builder Contracts (Milestone 7.1)
+// ---------------------------------------------------------------------------
+
+export interface ContextSourceReference {
+  chunkId: string;
+  topic?: string;
+  concept?: string;
+  score?: number;
+  metadata: ChunkMetadata;
+}
+
+export interface ContextBuilderOptions {
+  maxContextLength?: number;
+  maxChunks?: number;
+  headerPrefix?: string;
+  headerStyle?: "colon" | "brackets";
+  includeMetadataHeader?: boolean;
+}
+
+export interface FormattedContextResponse {
+  context: string;
+  sources: ContextSourceReference[];
+  totalChunksUsed: number;
+  characterCount: number;
+  truncated: boolean;
 }
