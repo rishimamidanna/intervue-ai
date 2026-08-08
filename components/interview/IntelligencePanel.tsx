@@ -41,7 +41,7 @@ export function IntelligencePanel() {
   ];
 
   return (
-    <aside className="w-80 shrink-0 space-y-3 select-none">
+    <aside className="w-80 shrink-0 space-y-2 select-none">
       {/* CARD 1: Adaptive Difficulty */}
       <div className="bg-[#0e0a1b]/80 border border-purple-900/30 backdrop-blur-xl rounded-2xl p-4 space-y-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
         <div className="flex items-center justify-between">
@@ -84,6 +84,21 @@ export function IntelligencePanel() {
           {/* Circular Donut Gauge */}
           <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+              <defs>
+                <linearGradient id="confidence-ring-gradient" x1="4" y1="30" x2="31" y2="5" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stopColor="#6d28d9" />
+                  <stop offset="0.5" stopColor="#a855f7" />
+                  <stop offset="0.8" stopColor="#d8b4fe" />
+                  <stop offset="1" stopColor="#818cf8" />
+                </linearGradient>
+                <filter id="confidence-ring-glow" x="-55%" y="-55%" width="210%" height="210%">
+                  <feGaussianBlur stdDeviation="1.05" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
               <path
                 className="text-zinc-800"
                 strokeWidth="3.5"
@@ -92,14 +107,25 @@ export function IntelligencePanel() {
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
               />
               <path
-                className="text-purple-500 stroke-purple-400 drop-shadow-[0_0_6px_#c084fc]"
                 strokeDasharray="88, 100"
                 strokeWidth="3.5"
                 strokeLinecap="round"
-                stroke="currentColor"
+                stroke="url(#confidence-ring-gradient)"
                 fill="none"
+                filter="url(#confidence-ring-glow)"
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
+              >
+                <animate
+                  attributeName="stroke-dashoffset"
+                  values="4;0;-1;0;4"
+                  dur="4.8s"
+                  repeatCount="indefinite"
+                  calcMode="spline"
+                  keyTimes="0;0.35;0.55;0.72;1"
+                  keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1"
+                />
+                <animate attributeName="opacity" values="0.82;1;0.88;1;0.82" dur="4.8s" repeatCount="indefinite" />
+              </path>
             </svg>
             <span className="absolute font-mono text-sm font-bold text-white">
               88%
@@ -116,25 +142,173 @@ export function IntelligencePanel() {
           </div>
         </div>
 
-        {/* Mini Wave Graph */}
+        {/* Confidence Trend Graph */}
         <div className="pt-1 border-t border-purple-900/20">
           <div className="flex justify-between text-[9px] font-mono text-zinc-500 mb-1">
             <span>Confidence Trend</span>
           </div>
-          <svg className="w-full h-6 text-purple-400" viewBox="0 0 100 20">
-            <path
-              d="M0,15 Q20,5 40,12 T80,4 T100,10"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="drop-shadow-[0_0_6px_#c084fc]"
+          <svg
+            aria-hidden="true"
+            className="h-7 w-full overflow-visible"
+            viewBox="0 0 260 40"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient
+                id="confidence-trend-stroke"
+                x1="4"
+                y1="30"
+                x2="256"
+                y2="10"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0" stopColor="#6d28d9" />
+                <stop offset="0.5" stopColor="#a855f7" />
+                <stop offset="1" stopColor="#e9d5ff" />
+              </linearGradient>
+              <linearGradient
+                id="confidence-trend-area"
+                x1="0"
+                y1="5"
+                x2="0"
+                y2="40"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0" stopColor="#a855f7" stopOpacity="0.18" />
+                <stop offset="1" stopColor="#6d28d9" stopOpacity="0" />
+              </linearGradient>
+              <filter
+                id="confidence-trend-glow"
+                x="-20%"
+                y="-80%"
+                width="140%"
+                height="260%"
+              >
+                <feGaussianBlur stdDeviation="1.4" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            <rect
+              x="1"
+              y="1"
+              width="258"
+              height="38"
+              rx="5"
+              fill="#020208"
+              fillOpacity="0.34"
+              stroke="#8b5cf6"
+              strokeOpacity="0.08"
+              strokeWidth="0.5"
             />
+
+            <g stroke="#a78bfa" strokeWidth="0.35" opacity="0.1">
+              <path d="M0 12 H260" />
+              <path d="M0 24 H260" />
+              <path d="M0 36 H260" />
+              <path d="M52 0 V40" />
+              <path d="M104 0 V40" />
+              <path d="M156 0 V40" />
+              <path d="M208 0 V40" />
+            </g>
+
+            <path
+              d="M4 31 C20 27 28 16 45 21 C62 28 76 32 92 23 C108 13 120 16 136 19 C154 23 162 31 179 25 C198 18 204 7 222 13 C238 20 245 5 256 9 L256 40 L4 40 Z"
+              fill="url(#confidence-trend-area)"
+            />
+            <path
+              d="M4 31 C20 27 28 16 45 21 C62 28 76 32 92 23 C108 13 120 16 136 19 C154 23 162 31 179 25 C198 18 204 7 222 13 C238 20 245 5 256 9"
+              fill="none"
+              stroke="#a855f7"
+              strokeWidth="4"
+              strokeLinecap="round"
+              opacity="0.12"
+              filter="url(#confidence-trend-glow)"
+            />
+            <path
+              d="M4 31 C20 27 28 16 45 21 C62 28 76 32 92 23 C108 13 120 16 136 19 C154 23 162 31 179 25 C198 18 204 7 222 13 C238 20 245 5 256 9"
+              pathLength="1"
+              fill="none"
+              stroke="url(#confidence-trend-stroke)"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray="1"
+              filter="url(#confidence-trend-glow)"
+            >
+              <animate
+                attributeName="stroke-dashoffset"
+                from="1"
+                to="0"
+                dur="1.6s"
+                fill="freeze"
+                calcMode="spline"
+                keySplines="0.16 1 0.3 1"
+              />
+            </path>
+
+            <g fill="#c084fc" filter="url(#confidence-trend-glow)">
+              <circle cx="45" cy="21" r="0.95">
+                <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.8s" repeatCount="indefinite" />
+                <animate attributeName="r" values="0.8;1.25;0.8" dur="2.8s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="136" cy="19" r="0.95">
+                <animate attributeName="opacity" values="0.25;0.85;0.25" dur="3.2s" begin="0.7s" repeatCount="indefinite" />
+                <animate attributeName="r" values="0.8;1.25;0.8" dur="3.2s" begin="0.7s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="222" cy="13" r="0.95">
+                <animate attributeName="opacity" values="0.25;0.9;0.25" dur="2.6s" begin="1.3s" repeatCount="indefinite" />
+                <animate attributeName="r" values="0.8;1.3;0.8" dur="2.6s" begin="1.3s" repeatCount="indefinite" />
+              </circle>
+            </g>
+
+            <circle r="3.4" fill="#a855f7" opacity="0.16" filter="url(#confidence-trend-glow)">
+              <animateMotion
+                dur="5.8s"
+                repeatCount="indefinite"
+                path="M4 31 C20 27 28 16 45 21 C62 28 76 32 92 23 C108 13 120 16 136 19 C154 23 162 31 179 25 C198 18 204 7 222 13 C238 20 245 5 256 9"
+              />
+            </circle>
+            <circle r="1.25" fill="#f5f3ff" filter="url(#confidence-trend-glow)">
+              <animateMotion
+                dur="5.8s"
+                repeatCount="indefinite"
+                path="M4 31 C20 27 28 16 45 21 C62 28 76 32 92 23 C108 13 120 16 136 19 C154 23 162 31 179 25 C198 18 204 7 222 13 C238 20 245 5 256 9"
+              />
+              <animate attributeName="opacity" values="0.7;1;0.7" dur="1.4s" repeatCount="indefinite" />
+            </circle>
+
+            <circle cx="256" cy="9" r="1.7" fill="#f5f3ff" filter="url(#confidence-trend-glow)">
+              <animate
+                attributeName="opacity"
+                values="0.65;1;0.65"
+                dur="2.2s"
+                repeatCount="indefinite"
+              />
+            </circle>
+            <circle cx="256" cy="9" r="2" fill="none" stroke="#c084fc" strokeWidth="0.8">
+              <animate
+                attributeName="r"
+                values="2;5.5;2"
+                dur="2.2s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.75;0;0.75"
+                dur="2.2s"
+                repeatCount="indefinite"
+              />
+            </circle>
           </svg>
         </div>
       </div>
 
       {/* CARD 3: Knowledge Retrieval */}
-      <div className="bg-[#0e0a1b]/80 border border-purple-900/30 backdrop-blur-xl rounded-2xl p-4 space-y-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+      <div className="bg-[#0e0a1b]/80 border border-purple-900/30 backdrop-blur-xl rounded-2xl p-3 space-y-2 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-purple-400" />
@@ -152,11 +326,11 @@ export function IntelligencePanel() {
         </p>
 
         {/* Concept Items */}
-        <div className="space-y-1.5 pt-1">
+        <div className="space-y-1 pt-0.5">
           {concepts.map((c) => (
             <div
               key={c.name}
-              className="flex items-center justify-between text-[11px] py-1 px-2 rounded-lg bg-zinc-950/40 border border-purple-900/20 hover:border-purple-500/30 transition-all cursor-pointer group"
+              className="group flex items-center justify-between rounded-lg border border-purple-900/20 bg-zinc-950/40 px-2 py-0.5 text-[10px] transition-all hover:border-purple-500/30"
             >
               <div className="flex items-center gap-2 truncate pr-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
@@ -172,7 +346,7 @@ export function IntelligencePanel() {
           ))}
         </div>
 
-        <div className="text-right pt-1">
+        <div className="text-right pt-0.5">
           <button className="text-[10px] font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1 ml-auto">
             <span>View All</span>
             <ChevronRight className="w-3 h-3" />
@@ -181,7 +355,7 @@ export function IntelligencePanel() {
       </div>
 
       {/* CARD 4: Knowledge Gap Detection */}
-      <div className="bg-[#0e0a1b]/80 border border-purple-900/30 backdrop-blur-xl rounded-2xl p-4 space-y-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+      <div className="bg-[#0e0a1b]/80 border border-purple-900/30 backdrop-blur-xl rounded-2xl p-3.5 space-y-2 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-400" />
@@ -199,11 +373,11 @@ export function IntelligencePanel() {
         </p>
 
         {/* Gap Items */}
-        <div className="space-y-1.5 pt-1">
+        <div className="space-y-1 pt-0.5">
           {gaps.map((g) => (
             <div
               key={g.name}
-              className="flex items-center justify-between text-[11px] py-1.5 px-2 rounded-lg bg-zinc-950/40 border border-purple-900/20"
+              className="flex items-center justify-between rounded-lg border border-purple-900/20 bg-zinc-950/40 px-2 py-0.5 text-[10px]"
             >
               <div className="flex items-center gap-2 truncate">
                 <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -216,7 +390,7 @@ export function IntelligencePanel() {
           ))}
         </div>
 
-        <div className="text-right pt-1">
+        <div className="text-right pt-0.5">
           <button className="text-[10px] font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1 ml-auto">
             <span>View Recommendations</span>
             <ChevronRight className="w-3 h-3" />

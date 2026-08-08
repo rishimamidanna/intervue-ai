@@ -21,37 +21,37 @@ import { AnalysisBar } from "./AnalysisBar";
 
 export function InterviewRoom() {
   return (
-    <div className="min-h-screen bg-[#05020a] text-white flex overflow-hidden font-sans selection:bg-purple-500/30">
-      {/* Left Navigation Sidebar */}
-      <Sidebar />
+    <div className="h-dvh overflow-hidden bg-[#030106] p-3 font-sans text-white selection:bg-purple-500/30">
+      <div className="flex h-full min-h-0 gap-3">
+        {/* Fixed glass navigation rail. */}
+        <div className="hidden w-[216px] shrink-0 lg:block [&>aside]:h-full [&>aside]:min-h-0 [&>aside]:w-full [&>aside]:rounded-2xl [&>aside]:border [&>aside]:border-purple-900/30">
+          <Sidebar />
+        </div>
 
-      {/* Main Command Center Dashboard Area */}
-      <main className="flex-1 flex flex-col p-4 sm:p-5 overflow-y-auto max-h-screen space-y-4">
-        {/* Top Header */}
-        <InterviewHeader />
+        {/* Center interview surface and independent intelligence rail. */}
+        <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 min-[1360px]:grid-cols-[minmax(0,1fr)_minmax(340px,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(380px,420px)]">
+          <main className="flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden [&>header]:mb-0">
+            <InterviewHeader />
 
-        {/* Center Main Workspace */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px_320px] gap-4 items-stretch">
-          {/* Conversation Column (Left of Center) */}
-          <div className="space-y-4 flex flex-col justify-between">
-            <QuestionCard />
-            <AnswerCard />
-          </div>
+            <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.42fr)_minmax(330px,0.92fr)]">
+              <section className="flex min-h-0 flex-col justify-start gap-3 overflow-y-auto pr-1">
+                <QuestionCard />
+                <AnswerCard />
+              </section>
 
-          {/* AI Robot Viewer Column (Center) */}
-          <div className="min-h-[460px] h-full flex">
-            <RobotViewer />
-          </div>
+              <section className="flex min-h-[460px] min-w-0">
+                <RobotViewer />
+              </section>
+            </div>
 
-          {/* Right Intelligence Panel Column */}
-          <div className="hidden xl:block">
+            <AnalysisBar />
+          </main>
+
+          <div className="hidden min-h-0 overflow-y-auto pr-1 min-[1360px]:block [&>aside]:w-full">
             <IntelligencePanel />
           </div>
         </div>
-
-        {/* Bottom Analysis Bar */}
-        <AnalysisBar />
-      </main>
+      </div>
     </div>
   );
 }
