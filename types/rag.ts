@@ -761,6 +761,18 @@ export interface RetrievalPlannerDecision {
   reasoning: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Query Decomposition Contracts (Milestone 7.17)
+// ---------------------------------------------------------------------------
+
+export interface QueryDecompositionResponse {
+  originalQuery: string;
+  subQuestions: string[];
+  results: RetrievedChunk[];
+  durationMs: number;
+}
+
+
 
 
 

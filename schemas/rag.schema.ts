@@ -675,6 +675,18 @@ export const RetrievalPlannerDecisionSchema = z.object({
   reasoning: z.array(z.string()),
 });
 
+// ---------------------------------------------------------------------------
+// Query Decomposition Schemas (Milestone 7.17)
+// ---------------------------------------------------------------------------
+
+export const QueryDecompositionResponseSchema = z.object({
+  originalQuery: z.string().min(1, "originalQuery is required"),
+  subQuestions: z.array(z.string()),
+  results: z.array(RetrievedChunkSchema),
+  durationMs: z.number().min(0),
+});
+
+
 
 
 
