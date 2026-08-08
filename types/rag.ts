@@ -856,6 +856,23 @@ export interface RAGEvaluationBenchmarkResult {
   overallScore: string;
 }
 
+// ---------------------------------------------------------------------------
+// Self-Evaluation Reflection Contracts (Milestone 7.29)
+// ---------------------------------------------------------------------------
+
+export interface ReflectionEvaluationChecks {
+  grounded: boolean;
+  complete: boolean;
+  relevant: boolean;
+}
+
+export interface ReflectionEvaluationResult {
+  answerQuality: number;
+  checks: ReflectionEvaluationChecks;
+  improvements: string[];
+}
+
+
 
 
 

@@ -764,6 +764,23 @@ export const RAGEvaluationBenchmarkResultSchema = z.object({
   overallScore: z.string().min(1, "overallScore is required"),
 });
 
+// ---------------------------------------------------------------------------
+// Self-Evaluation Reflection Schemas (Milestone 7.29)
+// ---------------------------------------------------------------------------
+
+export const ReflectionEvaluationChecksSchema = z.object({
+  grounded: z.boolean(),
+  complete: z.boolean(),
+  relevant: z.boolean(),
+});
+
+export const ReflectionEvaluationResultSchema = z.object({
+  answerQuality: z.number().min(0).max(1),
+  checks: ReflectionEvaluationChecksSchema,
+  improvements: z.array(z.string()),
+});
+
+
 
 
 
