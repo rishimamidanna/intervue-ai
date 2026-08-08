@@ -1,7 +1,7 @@
 /**
  * schemas/rag.schema.ts
  *
- * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage, Hybrid Retrieval, Candidate-Aware Ranking & Context Builder.
+ * Zod validation schema for RAG Semantic Chunks, Metadata, Embeddings, Vector Storage, Hybrid Retrieval, Candidate Ranking, Context Builder & Prompt Context Builder.
  *
  * Owner: Member 2 (Data + RAG)
  */
@@ -163,6 +163,7 @@ export const ContextBuilderOptionsSchema = z.object({
   maxContextLength: z.number().int().positive().optional(),
   maxChunks: z.number().int().positive().optional(),
   headerPrefix: z.string().optional(),
+  headerStyle: z.enum(["colon", "brackets"]).optional(),
   includeMetadataHeader: z.boolean().optional(),
 });
 
@@ -172,4 +173,22 @@ export const FormattedContextResponseSchema = z.object({
   totalChunksUsed: z.number().int().min(0),
   characterCount: z.number().int().min(0),
   truncated: z.boolean(),
+});
+
+// ---------------------------------------------------------------------------
+// Prompt Context Builder Schemas (Milestone 7.2)
+// ---------------------------------------------------------------------------
+
+export const LLMPromptMetadataSchema = z.object({
+  sources: z.array(ContextSourceReferenceSchema),
+  totalChunks: z.number().int().min(0),
+  candidateId: z.string().optional(),
+  candidateRole: z.string().optional(),
+  experienceYears: z.number().optional(),
+});
+
+export const LLMPromptPayloadSchema = z.object({
+  systemPrompt: z.string().min(1, "systemPrompt is required"),
+  userPrompt: z.string().min(1, "userPrompt is required"),
+  metadata: LLMPromptMetadataSchema,
 });

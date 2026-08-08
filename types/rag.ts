@@ -1,7 +1,7 @@
 /**
  * types/rag.ts
  *
- * RAG, Semantic Chunking, Embedding, Vector Storage, Retrieval, Hybrid Fusion, Candidate Ranking & Context Builder Contracts (Milestones 4, 5, 6 & 7.1)
+ * RAG, Semantic Chunking, Embedding, Vector Storage, Retrieval, Hybrid Fusion, Candidate Ranking, Context & Prompt Builder Contracts (Milestones 4 - 7)
  *
  * Owner: Shared (types/ directory) - Member 2 (Data + RAG)
  */
@@ -197,4 +197,30 @@ export interface FormattedContextResponse {
   totalChunksUsed: number;
   characterCount: number;
   truncated: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Prompt Context Builder Contracts (Milestone 7.2)
+// ---------------------------------------------------------------------------
+
+export interface PromptBuilderInput {
+  question: string;
+  candidateProfile?: CandidateProfile | CandidateIntelligenceProfile | Record<string, unknown>;
+  chunks?: (RetrievedChunk | CandidateAwareRetrievedChunk)[];
+  contextResponse?: FormattedContextResponse;
+  customInstructions?: string;
+}
+
+export interface LLMPromptMetadata {
+  sources: ContextSourceReference[];
+  totalChunks: number;
+  candidateId?: string;
+  candidateRole?: string;
+  experienceYears?: number;
+}
+
+export interface LLMPromptPayload {
+  systemPrompt: string;
+  userPrompt: string;
+  metadata: LLMPromptMetadata;
 }
