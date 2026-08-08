@@ -129,6 +129,12 @@ export class FileBackedCandidateMemoryStoreProvider
         ...p,
         notes: p.notes ? sanitizePrivacySensitiveText(p.notes) : undefined,
       })),
+      feedback: memory.feedback?.map((f) => ({
+        question: sanitizePrivacySensitiveText(f.question),
+        performance: f.performance,
+        difficulty: f.difficulty,
+        weakness: sanitizePrivacySensitiveText(f.weakness),
+      })),
     };
 
     const validated = strictValidate(

@@ -506,12 +506,20 @@ export const CandidatePerformanceRecordSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const CandidateFeedbackSchema = z.object({
+  question: z.string().min(1, "question is required"),
+  performance: z.string().min(1, "performance is required"),
+  difficulty: z.string().min(1, "difficulty is required"),
+  weakness: z.string().min(1, "weakness is required"),
+});
+
 export const CandidateMemoryStoreSchema = z.object({
   id: z.string().min(1, "id is required"),
   previousQuestions: z.array(z.string()),
   weakAreas: z.array(z.string()),
   strengths: z.array(z.string()),
   performance: z.array(CandidatePerformanceRecordSchema),
+  feedback: z.array(CandidateFeedbackSchema).optional(),
 });
 
 export const MemoryHistoryItemSchema = z.object({

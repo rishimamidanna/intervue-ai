@@ -583,12 +583,20 @@ export interface CandidatePerformanceRecord {
   notes?: string;
 }
 
+export interface CandidateFeedback {
+  question: string;
+  performance: string;
+  difficulty: string;
+  weakness: string;
+}
+
 export interface CandidateMemoryStore {
   id: string;
   previousQuestions: string[];
   weakAreas: string[];
   strengths: string[];
   performance: CandidatePerformanceRecord[];
+  feedback?: CandidateFeedback[];
 }
 
 export interface MemoryHistoryItem {

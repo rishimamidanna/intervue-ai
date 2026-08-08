@@ -220,6 +220,20 @@
         "attempts": 1,
         "timestamp": "2026-08-08T09:13:33.939Z",
         "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:15:17.862Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:15:17.862Z",
+        "notes": "Strong grasp of dense vector representations"
       }
     ]
   },
@@ -245,5 +259,34 @@
     ],
     "strengths": [],
     "performance": []
+  },
+  {
+    "id": "candidate-feedback-999",
+    "previousQuestions": [
+      "What are the exact metrics used in RAG Evaluation?",
+      "How do you calculate Cosine Similarity between dense vectors?"
+    ],
+    "weakAreas": [
+      "BM25",
+      "RAG Evaluation Metrics"
+    ],
+    "strengths": [
+      "Cosine Similarity"
+    ],
+    "performance": [],
+    "feedback": [
+      {
+        "question": "What are the exact metrics used in RAG Evaluation?",
+        "performance": "incorrect",
+        "difficulty": "Intermediate",
+        "weakness": "RAG Evaluation Metrics"
+      },
+      {
+        "question": "How do you calculate Cosine Similarity between dense vectors?",
+        "performance": "correct",
+        "difficulty": "Beginner",
+        "weakness": "Cosine Similarity"
+      }
+    ]
   }
 ]
