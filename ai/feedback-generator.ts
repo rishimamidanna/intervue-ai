@@ -123,7 +123,7 @@ Provide 2-4 strengths, 2-4 gaps, and 3-5 recovery plan items ordered by priority
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ]);
-  } catch (error) {
+  } catch {
     // Fallback feedback if LLM call fails
     llmOutput = {
       summary: `The candidate completed ${state.questionHistory.length} questions across ${state.daysCovered.length} curriculum days, achieving an overall score of ${overallScore}/100.`,

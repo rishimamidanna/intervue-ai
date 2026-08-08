@@ -15,7 +15,6 @@ import type {
   InterviewQuestion,
   AnswerEvaluation,
   TopicKnowledge,
-  DifficultyLevel,
 } from "@/types/interview";
 import type { DecisionResult } from "./decision-engine";
 

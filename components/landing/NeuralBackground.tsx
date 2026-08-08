@@ -12,7 +12,8 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useSyncExternalStore } from "react";
 
-function subscribe() {
+function subscribe(callback: () => void) {
+  callback();
   return () => {};
 }
 
