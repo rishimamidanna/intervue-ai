@@ -184,12 +184,20 @@ export interface CandidateAwareRetrievedChunk extends RetrievedChunk {
   finalScore: number;
 }
 
+export interface RetrievalLatencyMetrics {
+  embedding: number;
+  vectorSearch: number;
+  bm25: number;
+  ranking: number;
+}
+
 export interface RetrievalResponse {
   query: string;
   results: RetrievedChunk[];
   totalRetrieved: number;
   durationMs: number;
   retrievalSource: RetrievalSource;
+  latency?: RetrievalLatencyMetrics;
 }
 
 // ---------------------------------------------------------------------------
@@ -353,3 +361,392 @@ export interface EvaluationResult {
   metrics: RAGEvaluationMetrics;
   timestamp: string;
 }
+
+// ---------------------------------------------------------------------------
+// Cross Encoder Reranking Contracts (Milestone 7.9)
+// ---------------------------------------------------------------------------
+
+/**
+ * Configuration for the cross-encoder reranker.
+ */
+export interface CrossEncoderConfig {
+  /** Weight applied to the original retrieval score (0.0–1.0). */
+  originalScoreWeight: number;
+  /** Weight applied to the cross-encoder reranking score (0.0–1.0). */
+  rerankScoreWeight: number;
+  /** Maximum number of results to rerank from the candidate pool. */
+  rerankTopK: number;
+  /** Maximum number of results to return after reranking. */
+  finalTopK: number;
+  /** Minimum first-stage retrieval score required to enter reranking pool. Default: 0.10 */
+  minInitialScoreThreshold?: number;
+  /** Batch size for batch-scoring documents in cross-encoder. Default: 10 */
+  batchSize?: number;
+  /** Candidate pool size limit before reranking. Default: 15 */
+  candidatePoolSize?: number;
+}
+
+/**
+ * Individual reranked chunk with full score breakdown.
+ */
+export interface RerankResult {
+  chunkId: string;
+  content: string;
+  originalScore: number;
+  rerankScore: number;
+  finalScore: number;
+  metadata: ChunkMetadata;
+  retrievalSource: RetrievalSource;
+  sources?: RetrievalSource[];
+  rankChange: number;
+}
+
+export interface RerankPerformanceMetrics {
+  retrievalTime: string | number;
+  rerankingTime: string | number;
+  finalAccuracy: string | number;
+}
+
+/**
+ * Full reranking response with original and reranked results.
+ */
+export interface RerankResponse {
+  query: string;
+  results: RerankResult[];
+  totalCandidates: number;
+  totalReranked: number;
+  durationMs: number;
+  config: CrossEncoderConfig;
+  tracking?: RerankPerformanceMetrics;
+}
+
+// ---------------------------------------------------------------------------
+// Multi Query Retrieval Contracts (Milestone 7.10)
+// ---------------------------------------------------------------------------
+
+/**
+ * Configuration for multi-query retrieval.
+ */
+export interface MultiQueryConfig {
+  /** Maximum number of expanded queries to generate. */
+  maxExpandedQueries: number;
+  /** Top-K results to fetch per individual query. */
+  perQueryTopK: number;
+  /** Final top-K results after merging and deduplication. */
+  finalTopK: number;
+}
+
+/**
+ * Full multi-query retrieval response.
+ */
+export interface MultiQueryRetrievalResponse {
+  originalQuery: string;
+  generatedQueries: string[];
+  results: RetrievedChunk[];
+  totalCandidatesBeforeMerge: number;
+  totalAfterDedup: number;
+  durationMs: number;
+  config: MultiQueryConfig;
+}
+
+// ---------------------------------------------------------------------------
+// Query Understanding Layer Contracts (Milestone 7.11)
+// ---------------------------------------------------------------------------
+
+export type QueryIntentType =
+  | "conceptual"
+  | "procedural"
+  | "evaluative"
+  | "factual"
+  | "exploratory"
+  | "comparison"
+  | string;
+
+export type QueryRequiredDepth = "overview" | "standard" | "deep-dive" | string;
+
+/**
+ * Structured Query Intent produced by Query Analyzer before retrieval.
+ */
+export interface StructuredQueryIntent {
+  query: string;
+  intent: QueryIntentType;
+  topic: string;
+  difficulty: ConceptDifficultyLevel | string;
+  requiredDepth: QueryRequiredDepth;
+  keywords: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Adaptive Retrieval Contracts (Milestone 7.12)
+// ---------------------------------------------------------------------------
+
+export interface AdaptiveRetrievalConfig {
+  /** Top-K for high confidence queries (fewer chunks). Default: 3 */
+  highConfidenceTopK: number;
+  /** Top-K for medium confidence queries (balanced chunks). Default: 5 */
+  mediumConfidenceTopK: number;
+  /** Top-K for low confidence queries (more chunks). Default: 8 */
+  lowConfidenceTopK: number;
+  /** Initial candidate pool size for confidence analysis. Default: 10 */
+  initialCandidateK: number;
+}
+
+export interface AdaptiveRetrievalStrategy {
+  confidence: RetrievalConfidenceLevel | string;
+  selectedTopK: number;
+  reasoning: string;
+}
+
+export interface AdaptiveRetrievalResponse {
+  query: string;
+  strategy: AdaptiveRetrievalStrategy;
+  confidenceAnalysis: RetrievalConfidenceAnalysis;
+  results: RetrievedChunk[];
+  totalRetrieved: number;
+  durationMs: number;
+  config: AdaptiveRetrievalConfig;
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge Graph Enhanced RAG Contracts (Milestone 7.13)
+// ---------------------------------------------------------------------------
+
+export type GraphNodeType = "concept" | "topic" | "skill" | string;
+export type GraphEdgeRelation = "requires" | "related_to" | "prerequisite_of" | string;
+
+export interface GraphNode {
+  id: string;
+  name: string;
+  type: GraphNodeType;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GraphRelationship {
+  source: string;
+  target: string;
+  relation: GraphEdgeRelation;
+  weight?: number;
+}
+
+export interface ConceptGraphData {
+  nodes: GraphNode[];
+  edges: GraphRelationship[];
+}
+
+export interface KnowledgeGraphRAGResponse {
+  query?: string;
+  concepts: string[];
+  relationships: GraphRelationship[];
+  supportingChunks: RetrievedChunk[];
+  durationMs?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Self Correcting RAG Contracts (Milestone 7.14)
+// ---------------------------------------------------------------------------
+
+export interface SelfCorrectingRAGConfig {
+  /** Minimum relevance score required to consider context "Good". Default: 0.55 */
+  minRelevanceThreshold: number;
+  /** Maximum number of query improvement retries allowed to avoid infinite loops. Default: 2 */
+  maxRetries: number;
+  /** Default topK chunks to retrieve per attempt. Default: 5 */
+  topK: number;
+}
+
+export interface SelfCorrectingAttempt {
+  query: string;
+  isRelevant: boolean;
+  score: number;
+  chunks: RetrievedChunk[];
+  reasons: string[];
+}
+
+export interface SelfCorrectingRAGResponse {
+  firstAttempt: SelfCorrectingAttempt;
+  retryPerformed: boolean;
+  retryCount: number;
+  finalContext: SelfCorrectingAttempt;
+  durationMs: number;
+  config: SelfCorrectingRAGConfig;
+}
+
+// ---------------------------------------------------------------------------
+// Interview Memory RAG Contracts (Milestone 7.15)
+// ---------------------------------------------------------------------------
+
+export interface CandidatePerformanceRecord {
+  topic: string;
+  score: number;
+  attempts: number;
+  timestamp: string;
+  notes?: string;
+}
+
+export interface CandidateMemoryStore {
+  id: string;
+  previousQuestions: string[];
+  weakAreas: string[];
+  strengths: string[];
+  performance: CandidatePerformanceRecord[];
+}
+
+export interface MemoryHistoryItem {
+  type: "question" | "weakness" | "strength" | "performance" | string;
+  content: string;
+  topic?: string;
+  relevanceScore?: number;
+  timestamp?: string;
+}
+
+export interface InterviewMemoryResponse {
+  candidateId: string;
+  candidateContext: string;
+  relevantHistory: MemoryHistoryItem[];
+  personalizedChunks: RetrievedChunk[];
+  memory: CandidateMemoryStore;
+  durationMs?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Intelligent Caching Contracts (Performance Milestone P2)
+// ---------------------------------------------------------------------------
+
+export type CacheCategory =
+  | "query_embeddings"
+  | "retrieval_results"
+  | "candidate_context"
+  | "generated_context";
+
+export interface CacheResponseMetadata {
+  cacheHit: boolean;
+  responseTime: string;
+  category?: CacheCategory | string;
+  cacheKey?: string;
+  ttlMs?: number;
+}
+
+export interface IntelligentCacheStats {
+  hits: number;
+  misses: number;
+  hitRatio: number;
+  totalEntries: number;
+  categories: Record<string, number>;
+}
+
+// ---------------------------------------------------------------------------
+// Parallel Processing Contracts (Performance Milestone P3)
+// ---------------------------------------------------------------------------
+
+export interface ParallelTaskTimingMetrics {
+  retrievalMs: number;
+  memoryLookupMs: number;
+  metadataLookupMs: number;
+  candidateAnalysisMs: number;
+  totalParallelMs: number;
+  sequentialEquivalentMs: number;
+  timeSavedMs: number;
+}
+
+export interface ParallelTaskStatuses {
+  retrieval: "fulfilled" | "rejected";
+  memoryLookup: "fulfilled" | "rejected";
+  metadataLookup: "fulfilled" | "rejected";
+  candidateAnalysis: "fulfilled" | "rejected";
+}
+
+export interface ParallelRAGResponse {
+  query: string;
+  candidateId?: string;
+  results: RetrievedChunk[];
+  candidateContext?: string;
+  relevantHistory: MemoryHistoryItem[];
+  relationships: GraphRelationship[];
+  candidateIntelligence?: CandidateIntelligenceProfile | null;
+  timings: ParallelTaskTimingMetrics;
+  taskStatuses: ParallelTaskStatuses;
+}
+
+// ---------------------------------------------------------------------------
+// Streaming AI Response Contracts (Performance Milestone P5)
+// ---------------------------------------------------------------------------
+
+export type StreamingEventType = "start" | "token" | "sources" | "done" | "interrupted";
+
+export interface SourceCitation {
+  chunkId: string;
+  title: string;
+  sourceType: string;
+  score: number;
+}
+
+export interface StreamingEvent {
+  event: StreamingEventType;
+  token?: string;
+  accumulated?: string;
+  sources?: SourceCitation[];
+  fullText?: string;
+  partialText?: string;
+  totalTokens?: number;
+  durationMs?: number;
+  reason?: string;
+}
+
+export interface StreamingRAGOptions {
+  abortSignal?: AbortSignal;
+  chunkSize?: number;
+  delayMs?: number;
+  temperature?: number;
+}
+
+// ---------------------------------------------------------------------------
+// RAG Performance Monitoring Contracts (Performance Milestone P6)
+// ---------------------------------------------------------------------------
+
+export interface RAGPipelineTimings {
+  embedding: string | number;
+  vectorSearch: string | number;
+  bm25: string | number;
+  hybridRanking: string | number;
+  reranking: string | number;
+  contextBuilding: string | number;
+  promptBuilding: string | number;
+  total: string | number;
+}
+
+export interface RAGPipelineCacheMetrics {
+  hit: boolean;
+  category?: string;
+  responseTime?: string;
+}
+
+export interface RAGPipelineRetrievalMetrics {
+  chunksRetrieved: number;
+  averageScore: number;
+  topScore?: number;
+}
+
+export interface RAGPipelinePerformanceMetrics {
+  requestId: string;
+  query?: string;
+  timestamp?: string;
+  timings: RAGPipelineTimings;
+  cache: RAGPipelineCacheMetrics;
+  retrieval: RAGPipelineRetrievalMetrics;
+}
+
+export interface RAGSystemSummaryStats {
+  totalRequestsTracked: number;
+  averageTotalLatencyMs: number;
+  cacheHitRatio: number;
+  bottlenecksIdentified: { stage: string; avgLatencyMs: number; percentageOfTotal: string }[];
+}
+
+
+
+
+
+
+
+
+

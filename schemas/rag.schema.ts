@@ -160,12 +160,20 @@ export const CandidateAwareRetrievedChunkSchema = RetrievedChunkSchema.extend({
   finalScore: z.number(),
 });
 
+export const RetrievalLatencyMetricsSchema = z.object({
+  embedding: z.number().min(0),
+  vectorSearch: z.number().min(0),
+  bm25: z.number().min(0),
+  ranking: z.number().min(0),
+});
+
 export const RetrievalResponseSchema = z.object({
   query: z.string().min(1, "query is required"),
   results: z.array(RetrievedChunkSchema),
   totalRetrieved: z.number().int().min(0),
   durationMs: z.number().min(0),
   retrievalSource: z.string().min(1),
+  latency: RetrievalLatencyMetricsSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -322,3 +330,337 @@ export const EvaluationResultSchema = z.object({
   metrics: RAGEvaluationMetricsSchema,
   timestamp: z.string(),
 });
+
+// ---------------------------------------------------------------------------
+// Cross Encoder Reranking Schemas (Milestone 7.9)
+// ---------------------------------------------------------------------------
+
+export const CrossEncoderConfigSchema = z.object({
+  originalScoreWeight: z.number().min(0).max(1),
+  rerankScoreWeight: z.number().min(0).max(1),
+  rerankTopK: z.number().int().positive(),
+  finalTopK: z.number().int().positive(),
+  minInitialScoreThreshold: z.number().min(0).max(1).optional(),
+  batchSize: z.number().int().positive().optional(),
+  candidatePoolSize: z.number().int().positive().optional(),
+});
+
+export const RerankResultSchema = z.object({
+  chunkId: z.string().min(1, "chunkId is required"),
+  content: z.string().min(1, "content is required"),
+  originalScore: z.number(),
+  rerankScore: z.number(),
+  finalScore: z.number(),
+  metadata: ChunkMetadataSchema,
+  retrievalSource: z.string().min(1, "retrievalSource is required"),
+  sources: z.array(z.string()).optional(),
+  rankChange: z.number().int(),
+});
+
+export const RerankPerformanceMetricsSchema = z.object({
+  retrievalTime: z.union([z.string(), z.number()]),
+  rerankingTime: z.union([z.string(), z.number()]),
+  finalAccuracy: z.union([z.string(), z.number()]),
+});
+
+export const RerankResponseSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  results: z.array(RerankResultSchema),
+  totalCandidates: z.number().int().min(0),
+  totalReranked: z.number().int().min(0),
+  durationMs: z.number().min(0),
+  config: CrossEncoderConfigSchema,
+  tracking: RerankPerformanceMetricsSchema.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Multi Query Retrieval Schemas (Milestone 7.10)
+// ---------------------------------------------------------------------------
+
+export const MultiQueryConfigSchema = z.object({
+  maxExpandedQueries: z.number().int().positive(),
+  perQueryTopK: z.number().int().positive(),
+  finalTopK: z.number().int().positive(),
+});
+
+export const MultiQueryRetrievalResponseSchema = z.object({
+  originalQuery: z.string().min(1, "originalQuery is required"),
+  generatedQueries: z.array(z.string()),
+  results: z.array(RetrievedChunkSchema),
+  totalCandidatesBeforeMerge: z.number().int().min(0),
+  totalAfterDedup: z.number().int().min(0),
+  durationMs: z.number().min(0),
+  config: MultiQueryConfigSchema,
+});
+
+// ---------------------------------------------------------------------------
+// Query Understanding Layer Schemas (Milestone 7.11)
+// ---------------------------------------------------------------------------
+
+export const StructuredQueryIntentSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  intent: z.string().min(1, "intent is required"),
+  topic: z.string().min(1, "topic is required"),
+  difficulty: z.string().min(1, "difficulty is required"),
+  requiredDepth: z.string().min(1, "requiredDepth is required"),
+  keywords: z.array(z.string()),
+});
+
+// ---------------------------------------------------------------------------
+// Adaptive Retrieval Schemas (Milestone 7.12)
+// ---------------------------------------------------------------------------
+
+export const AdaptiveRetrievalConfigSchema = z.object({
+  highConfidenceTopK: z.number().int().positive(),
+  mediumConfidenceTopK: z.number().int().positive(),
+  lowConfidenceTopK: z.number().int().positive(),
+  initialCandidateK: z.number().int().positive(),
+});
+
+export const AdaptiveRetrievalStrategySchema = z.object({
+  confidence: z.string().min(1, "confidence is required"),
+  selectedTopK: z.number().int().positive(),
+  reasoning: z.string().min(1, "reasoning is required"),
+});
+
+export const AdaptiveRetrievalResponseSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  strategy: AdaptiveRetrievalStrategySchema,
+  confidenceAnalysis: RetrievalConfidenceAnalysisSchema,
+  results: z.array(RetrievedChunkSchema),
+  totalRetrieved: z.number().int().min(0),
+  durationMs: z.number().min(0),
+  config: AdaptiveRetrievalConfigSchema,
+});
+
+// ---------------------------------------------------------------------------
+// Knowledge Graph Enhanced RAG Schemas (Milestone 7.13)
+// ---------------------------------------------------------------------------
+
+export const GraphNodeTypeSchema = z.enum(["concept", "topic", "skill"]).or(z.string());
+export const GraphEdgeRelationSchema = z.enum(["requires", "related_to", "prerequisite_of"]).or(z.string());
+
+export const GraphNodeSchema = z.object({
+  id: z.string().min(1, "id is required"),
+  name: z.string().min(1, "name is required"),
+  type: GraphNodeTypeSchema,
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const GraphRelationshipSchema = z.object({
+  source: z.string().min(1, "source is required"),
+  target: z.string().min(1, "target is required"),
+  relation: GraphEdgeRelationSchema,
+  weight: z.number().optional(),
+});
+
+export const ConceptGraphDataSchema = z.object({
+  nodes: z.array(GraphNodeSchema),
+  edges: z.array(GraphRelationshipSchema),
+});
+
+export const KnowledgeGraphRAGResponseSchema = z.object({
+  query: z.string().optional(),
+  concepts: z.array(z.string()),
+  relationships: z.array(GraphRelationshipSchema),
+  supportingChunks: z.array(RetrievedChunkSchema),
+  durationMs: z.number().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Self Correcting RAG Schemas (Milestone 7.14)
+// ---------------------------------------------------------------------------
+
+export const SelfCorrectingRAGConfigSchema = z.object({
+  minRelevanceThreshold: z.number().min(0).max(1),
+  maxRetries: z.number().int().min(1),
+  topK: z.number().int().positive(),
+});
+
+export const SelfCorrectingAttemptSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  isRelevant: z.boolean(),
+  score: z.number(),
+  chunks: z.array(RetrievedChunkSchema),
+  reasons: z.array(z.string()),
+});
+
+export const SelfCorrectingRAGResponseSchema = z.object({
+  firstAttempt: SelfCorrectingAttemptSchema,
+  retryPerformed: z.boolean(),
+  retryCount: z.number().int().min(0),
+  finalContext: SelfCorrectingAttemptSchema,
+  durationMs: z.number().min(0),
+  config: SelfCorrectingRAGConfigSchema,
+});
+
+// ---------------------------------------------------------------------------
+// Interview Memory RAG Schemas (Milestone 7.15)
+// ---------------------------------------------------------------------------
+
+export const CandidatePerformanceRecordSchema = z.object({
+  topic: z.string().min(1, "topic is required"),
+  score: z.number(),
+  attempts: z.number().int().min(0),
+  timestamp: z.string().min(1),
+  notes: z.string().optional(),
+});
+
+export const CandidateMemoryStoreSchema = z.object({
+  id: z.string().min(1, "id is required"),
+  previousQuestions: z.array(z.string()),
+  weakAreas: z.array(z.string()),
+  strengths: z.array(z.string()),
+  performance: z.array(CandidatePerformanceRecordSchema),
+});
+
+export const MemoryHistoryItemSchema = z.object({
+  type: z.enum(["question", "weakness", "strength", "performance"]).or(z.string()),
+  content: z.string().min(1, "content is required"),
+  topic: z.string().optional(),
+  relevanceScore: z.number().optional(),
+  timestamp: z.string().optional(),
+});
+
+export const InterviewMemoryResponseSchema = z.object({
+  candidateId: z.string().min(1, "candidateId is required"),
+  candidateContext: z.string(),
+  relevantHistory: z.array(MemoryHistoryItemSchema),
+  personalizedChunks: z.array(RetrievedChunkSchema),
+  memory: CandidateMemoryStoreSchema,
+  durationMs: z.number().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Intelligent Caching Schemas (Performance Milestone P2)
+// ---------------------------------------------------------------------------
+
+export const CacheResponseMetadataSchema = z.object({
+  cacheHit: z.boolean(),
+  responseTime: z.string().min(1, "responseTime is required"),
+  category: z.string().optional(),
+  cacheKey: z.string().optional(),
+  ttlMs: z.number().optional(),
+});
+
+export const IntelligentCacheStatsSchema = z.object({
+  hits: z.number().int().min(0),
+  misses: z.number().int().min(0),
+  hitRatio: z.number().min(0).max(1),
+  totalEntries: z.number().int().min(0),
+  categories: z.record(z.string(), z.number()),
+});
+
+// ---------------------------------------------------------------------------
+// Parallel Processing Schemas (Performance Milestone P3)
+// ---------------------------------------------------------------------------
+
+export const ParallelTaskTimingMetricsSchema = z.object({
+  retrievalMs: z.number().min(0),
+  memoryLookupMs: z.number().min(0),
+  metadataLookupMs: z.number().min(0),
+  candidateAnalysisMs: z.number().min(0),
+  totalParallelMs: z.number().min(0),
+  sequentialEquivalentMs: z.number().min(0),
+  timeSavedMs: z.number(),
+});
+
+export const ParallelTaskStatusesSchema = z.object({
+  retrieval: z.enum(["fulfilled", "rejected"]),
+  memoryLookup: z.enum(["fulfilled", "rejected"]),
+  metadataLookup: z.enum(["fulfilled", "rejected"]),
+  candidateAnalysis: z.enum(["fulfilled", "rejected"]),
+});
+
+export const ParallelRAGResponseSchema = z.object({
+  query: z.string().min(1, "query is required"),
+  candidateId: z.string().optional(),
+  results: z.array(RetrievedChunkSchema),
+  candidateContext: z.string().optional(),
+  relevantHistory: z.array(MemoryHistoryItemSchema),
+  relationships: z.array(GraphRelationshipSchema),
+  candidateIntelligence: z.any().optional(),
+  timings: ParallelTaskTimingMetricsSchema,
+  taskStatuses: ParallelTaskStatusesSchema,
+});
+
+// ---------------------------------------------------------------------------
+// Streaming AI Response Schemas (Performance Milestone P5)
+// ---------------------------------------------------------------------------
+
+export const SourceCitationSchema = z.object({
+  chunkId: z.string().min(1, "chunkId is required"),
+  title: z.string().min(1, "title is required"),
+  sourceType: z.string().min(1, "sourceType is required"),
+  score: z.number(),
+});
+
+export const StreamingEventSchema = z.object({
+  event: z.enum(["start", "token", "sources", "done", "interrupted"]),
+  token: z.string().optional(),
+  accumulated: z.string().optional(),
+  sources: z.array(SourceCitationSchema).optional(),
+  fullText: z.string().optional(),
+  partialText: z.string().optional(),
+  totalTokens: z.number().int().min(0).optional(),
+  durationMs: z.number().min(0).optional(),
+  reason: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// RAG Performance Monitoring Schemas (Performance Milestone P6)
+// ---------------------------------------------------------------------------
+
+export const RAGPipelineTimingsSchema = z.object({
+  embedding: z.union([z.string(), z.number()]),
+  vectorSearch: z.union([z.string(), z.number()]),
+  bm25: z.union([z.string(), z.number()]),
+  hybridRanking: z.union([z.string(), z.number()]),
+  reranking: z.union([z.string(), z.number()]),
+  contextBuilding: z.union([z.string(), z.number()]),
+  promptBuilding: z.union([z.string(), z.number()]),
+  total: z.union([z.string(), z.number()]),
+});
+
+export const RAGPipelineCacheMetricsSchema = z.object({
+  hit: z.boolean(),
+  category: z.string().optional(),
+  responseTime: z.string().optional(),
+});
+
+export const RAGPipelineRetrievalMetricsSchema = z.object({
+  chunksRetrieved: z.number().int().min(0),
+  averageScore: z.number(),
+  topScore: z.number().optional(),
+});
+
+export const RAGPipelinePerformanceMetricsSchema = z.object({
+  requestId: z.string().min(1, "requestId is required"),
+  query: z.string().optional(),
+  timestamp: z.string().optional(),
+  timings: RAGPipelineTimingsSchema,
+  cache: RAGPipelineCacheMetricsSchema,
+  retrieval: RAGPipelineRetrievalMetricsSchema,
+});
+
+export const RAGSystemSummaryStatsSchema = z.object({
+  totalRequestsTracked: z.number().int().min(0),
+  averageTotalLatencyMs: z.number().min(0),
+  cacheHitRatio: z.number().min(0).max(1),
+  bottlenecksIdentified: z.array(
+    z.object({
+      stage: z.string(),
+      avgLatencyMs: z.number(),
+      percentageOfTotal: z.string(),
+    })
+  ),
+});
+
+
+
+
+
+
+
+
+

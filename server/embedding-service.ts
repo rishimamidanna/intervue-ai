@@ -27,6 +27,7 @@ import { generateAllCurriculumChunks, getChunksByDay } from "./chunking-service"
 // ---------------------------------------------------------------------------
 
 let _embeddingsCache: VectorEmbedding[] | null = null;
+const _queryEmbeddingsCache = new Map<string, VectorEmbedding>();
 
 // ---------------------------------------------------------------------------
 // Provider Abstraction Contract
@@ -232,8 +233,45 @@ export async function getEmbeddingByChunkId(
 }
 
 /**
- * Clears the in-memory embeddings cache.
+ * Generates or retrieves from cache a VectorEmbedding for a query string.
+ *
+ * @param query - Input search query
+ * @param category - Optional category hint
+ * @returns Promise<VectorEmbedding>
+ */
+export async function embedQuery(
+  query: string,
+  category = "General Search"
+): Promise<VectorEmbedding> {
+  const cacheKey = `${query.toLowerCase().trim()}:${category}`;
+  if (_queryEmbeddingsCache.has(cacheKey)) {
+    return _queryEmbeddingsCache.get(cacheKey)!;
+  }
+
+  const queryChunk: CurriculumChunk = {
+    chunkId: `query-${Date.now()}`,
+    day: 1,
+    topic: "Query Search",
+    concept: query,
+    content: query,
+    keywords: [query.toLowerCase()],
+    metadata: {
+      keywords: [query.toLowerCase()],
+      category,
+      difficulty: "Beginner",
+      sourceRef: { file: "query.json", day: 1, uri: "query#search" },
+    },
+  };
+
+  const embedding = await defaultEmbeddingService.embed(queryChunk);
+  _queryEmbeddingsCache.set(cacheKey, embedding);
+  return embedding;
+}
+
+/**
+ * Clears the in-memory embeddings cache and query embedding cache.
  */
 export function clearEmbeddingCache(): void {
   _embeddingsCache = null;
+  _queryEmbeddingsCache.clear();
 }

@@ -1,0 +1,142 @@
+[
+  {
+    "id": "cand-test-715",
+    "previousQuestions": [
+      "What is BM25 sparse search?"
+    ],
+    "weakAreas": [
+      "BM25"
+    ],
+    "strengths": [
+      "Vector Embeddings"
+    ],
+    "performance": [
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:47:47.586Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:47:47.586Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:48:00.550Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:48:00.550Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:51:21.228Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:51:21.228Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:52:37.918Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:52:37.919Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:53:56.182Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:53:56.183Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:55:20.295Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:55:20.295Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:56:44.797Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:56:44.798Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:57:48.595Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:57:48.596Z",
+        "notes": "Strong grasp of dense vector representations"
+      }
+    ]
+  },
+  {
+    "id": "candidate-m1-01",
+    "previousQuestions": [],
+    "weakAreas": [],
+    "strengths": [],
+    "performance": []
+  },
+  {
+    "id": "non-existent-candidate-id-999",
+    "previousQuestions": [],
+    "weakAreas": [],
+    "strengths": [],
+    "performance": []
+  }
+]
