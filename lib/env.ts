@@ -1,55 +1,60 @@
 /**
  * lib/env.ts
  *
- * Environment variable validation and typed access.
- * Uses Zod to validate required environment variables at startup.
+ * Environment Variable Validation & Diagnostic Helper.
+ * Validates required environment variables for LLM and Redis services
+ * on application startup, providing clear diagnostic warnings without crashing
+ * or leaking sensitive credentials.
  *
- * Calling getEnv() in any server module ensures misconfigured environments
- * fail fast with a clear error rather than producing subtle runtime bugs.
- *
- * Owner: Member 2 (Backend / API)
+ * Owner: Member 2 (Backend / Architecture)
  */
 
-import { z } from "zod";
-
-const EnvSchema = z.object({
-  /** LLM provider API key — required in production */
-  LLM_API_KEY: z.string().min(1).optional(),
-  /** Model identifier, e.g. "gemini-1.5-pro" */
-  LLM_MODEL: z.string().optional().default("gemini-1.5-pro"),
-  /** Base URL for the LLM API (optional — defaults to provider standard) */
-  LLM_BASE_URL: z.string().url().optional(),
-  /** Voice provider API key — optional at this stage */
-  VOICE_API_KEY: z.string().optional(),
-  /** Public application name shown in the UI */
-  NEXT_PUBLIC_APP_NAME: z.string().optional().default("INTERVUE"),
-  /** Node environment */
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .optional()
-    .default("development"),
-});
-
-export type Env = z.infer<typeof EnvSchema>;
-
-let _env: Env | null = null;
+export interface EnvValidationResult {
+  hasLlmKey: boolean;
+  llmModel: string;
+  hasRedisConfig: boolean;
+  warnings: string[];
+}
 
 /**
- * Returns validated environment variables.
- * Throws on the first call if required variables are missing.
- * Caches the result after the first successful parse.
- *
- * TODO: Tighten validation when the LLM provider is confirmed.
- *       Make LLM_API_KEY required (remove .optional()) in production.
+ * Returns environment variables dictionary safely.
  */
-export function getEnv(): Env {
-  if (_env) return _env;
-  const result = EnvSchema.safeParse(process.env);
-  if (!result.success) {
-    throw new Error(
-      `Invalid environment variables:\n${result.error.toString()}`
+export function getEnv(): Record<string, string | undefined> {
+  return process.env;
+}
+
+/**
+ * Validates system environment configuration and returns status flags.
+ */
+export function validateEnv(): EnvValidationResult {
+  const warnings: string[] = [];
+
+  const llmKey = process.env.LLM_API_KEY || process.env.GEMINI_API_KEY;
+  const hasLlmKey = Boolean(llmKey && llmKey.trim().length > 0);
+  if (!hasLlmKey) {
+    warnings.push(
+      "LLM_API_KEY is not set. The platform will operate in resilient curriculum fallback mode."
     );
   }
-  _env = result.data;
-  return _env;
+
+  const llmModel = process.env.LLM_MODEL || "gemini-2.5-flash";
+
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const hasRedisConfig = Boolean(
+    redisUrl && redisToken && redisUrl.startsWith("http")
+  );
+
+  if (!hasRedisConfig) {
+    warnings.push(
+      "UPSTASH_REDIS_REST_URL / TOKEN not configured. Sessions will persist in local fallback storage."
+    );
+  }
+
+  return {
+    hasLlmKey,
+    llmModel,
+    hasRedisConfig,
+    warnings,
+  };
 }

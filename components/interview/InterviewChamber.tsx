@@ -4,13 +4,19 @@
  * components/interview/InterviewChamber.tsx
  *
  * Primary interview UI chamber entry point.
- * Delegates rendering to the premium INTERVUE AI InterviewRoom Command Center Dashboard.
+ * Wraps InterviewRoom inside PageTransition with cinematic AI Chamber initialization.
  *
  * Owner: Member 1 (Frontend / 3D Experience)
  */
 
+import React from "react";
 import { InterviewRoom } from "./InterviewRoom";
+import { PageTransition } from "@/components/common/PageTransition";
 
 export function InterviewChamber() {
-  return <InterviewRoom />;
+  return (
+    <PageTransition isChamberInit={true} initMessage="Initializing AI Interview Chamber...">
+      <InterviewRoom />
+    </PageTransition>
+  );
 }

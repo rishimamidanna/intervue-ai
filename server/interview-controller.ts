@@ -20,7 +20,7 @@
  */
 
 import type { CandidateProfile } from "@/types/candidate";
-import type { InterviewQuestion, AnswerEvaluation, InterviewState } from "@/types/interview";
+import type { InterviewQuestion, AnswerEvaluation, InterviewState, InterviewTurn } from "@/types/interview";
 import type { FinalFeedback } from "@/types/feedback";
 import type {
   InterviewInProgressResponse,
@@ -35,7 +35,7 @@ import type {
 import { MIN_INTERVIEW_QUESTIONS, MIN_CURRICULUM_DAYS } from "@/lib/constants";
 import { createSession, requireSession } from "./session-manager";
 import { setState } from "./interview-state";
-import { loadCurriculum } from "./curriculum-service";
+import { loadCurriculum, retrieveCurriculumContext } from "./curriculum-service";
 import { analyzeCandidate } from "@/ai/candidate-profiler";
 import { createKnowledgeTwin, updateKnowledgeTwin } from "@/ai/knowledge-twin";
 import { createInterviewPlan } from "@/ai/interview-planner";
@@ -123,16 +123,16 @@ export async function initializeInterview(
 
   // 3. Create session with state
   const candidateId = candidate.member?.id || "unknown";
-  createSession({
+  await createSession({
     sessionId,
     candidateId,
     initialTopic: plan.topicOrder[0] ?? "",
     initialDifficulty: plan.startingDifficulty,
   });
 
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const stateWithTwin: InterviewState = { ...state, knowledgeTwin };
-  setState(sessionId, stateWithTwin);
+  await setState(sessionId, stateWithTwin);
 
   // 4. Generate opening question
   const question = await generateQuestion(stateWithTwin, plan, curriculum);
@@ -156,7 +156,7 @@ export async function handleConversationTurn(
   sessionId: string,
   message: string
 ): Promise<InterviewResponse> {
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
 
   // Use cached curriculum and plan — NO extra LLM calls
   const curriculum = await loadCurriculum();
@@ -173,10 +173,18 @@ export async function handleConversationTurn(
     ? lastTurn.question
     : await generateQuestion(state, plan, curriculum);
 
+  // Retrieve curriculum context for grounding evaluation
+  const retrievedContext = retrieveCurriculumContext(
+    question.topic,
+    state.knowledgeGaps,
+    question.difficulty,
+    curriculum
+  );
+
   // 1. Run evaluation and contradiction detection IN PARALLEL — saves ~5s per turn
   const [evaluation, contradiction]: [AnswerEvaluation, Awaited<ReturnType<typeof detectContradiction>>] =
     await Promise.all([
-      evaluateAnswer(question, message, state),
+      evaluateAnswer(question, message, state, retrievedContext),
       detectContradiction(message, state),
     ]);
 
@@ -198,7 +206,7 @@ export async function handleConversationTurn(
   if (contradiction.detected && contradiction.description) {
     nextState.contradictions = [...nextState.contradictions, contradiction.description];
   }
-  setState(sessionId, nextState);
+  await setState(sessionId, nextState);
 
   // 5. Check completion constraints
   const meetsMinQuestions = nextState.questionCount >= MIN_INTERVIEW_QUESTIONS;
@@ -207,7 +215,7 @@ export async function handleConversationTurn(
 
   if (isComplete) {
     evictPlan(sessionId); // Clean up cache on completion
-    return completeInterview(sessionId);
+    return await completeInterview(sessionId);
   }
 
   // 6. Generate next question (only one LLM call per turn now)
@@ -226,7 +234,7 @@ export async function handleConversationTurn(
 export async function completeInterview(
   sessionId: string
 ): Promise<InterviewCompletedResponse> {
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const internalFeedback = await generateFinalFeedback(state);
   const publicFeedback = toPublicFeedback(internalFeedback);
 
@@ -262,7 +270,7 @@ export async function initializeInternalInterview(
   const knowledgeTwin = createKnowledgeTwin(profile);
   const plan = await createInterviewPlan(knowledgeTwin, curriculum);
 
-  const sessionId = createSession({
+  const sessionId = await createSession({
     sessionId: crypto.randomUUID(),
     candidateId,
     initialTopic: plan.topicOrder[0] ?? "",
@@ -271,11 +279,31 @@ export async function initializeInternalInterview(
 
   cachePlan(sessionId, plan);
 
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const stateWithTwin: InterviewState = { ...state, knowledgeTwin };
-  setState(sessionId, stateWithTwin);
-
   const question = await generateQuestion(stateWithTwin, plan, curriculum);
+
+  const stateWithInitialQ: InterviewState = {
+    ...stateWithTwin,
+    questionHistory: [
+      {
+        question,
+        answer: "",
+        evaluation: {
+          correctness: 0,
+          reasoning: 0,
+          depth: 0,
+          communication: 0,
+          engineering: 0,
+          coveredConcepts: [],
+          missingConcepts: [],
+          misconceptions: [],
+          nextAction: "follow_up",
+        },
+      },
+    ],
+  };
+  await setState(sessionId, stateWithInitialQ);
 
   return {
     status: "interviewing",
@@ -289,18 +317,29 @@ export async function processAnswer(
   questionId: string,
   answer: string
 ): Promise<InternalSubmitAnswerResponse> {
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const curriculum = await loadCurriculum();
   const plan = getCachedPlan(sessionId) ?? await createInterviewPlan(state.knowledgeTwin, curriculum);
 
-  const question = state.questionHistory
-    .map((t) => t.question)
-    .find((q) => q.id === questionId)
-    ?? (await generateQuestion(state, plan, curriculum));
+  // Fallback to active question from history if questionId lookup fails
+  const question =
+    state.questionHistory.map((t) => t.question).find((q) => q.id === questionId) ??
+    (state.questionHistory.length > 0
+      ? state.questionHistory[state.questionHistory.length - 1].question
+      : null) ??
+    (await generateQuestion(state, plan, curriculum));
+
+  // Retrieve curriculum context for evaluation grounding
+  const retrievedContext = retrieveCurriculumContext(
+    question.topic,
+    state.knowledgeGaps,
+    question.difficulty,
+    curriculum
+  );
 
   // Run evaluation and contradiction detection in parallel
   const [evaluation, contradiction] = await Promise.all([
-    evaluateAnswer(question, answer, state),
+    evaluateAnswer(question, answer, state, retrievedContext),
     detectContradiction(answer, state),
   ]);
 
@@ -317,7 +356,7 @@ export async function processAnswer(
   if (contradiction.detected && contradiction.description) {
     nextState.contradictions = [...nextState.contradictions, contradiction.description];
   }
-  setState(sessionId, nextState);
+  await setState(sessionId, nextState);
 
   const progress: InterviewProgress = {
     questionCount: nextState.questionCount,
@@ -348,7 +387,15 @@ export async function processAnswer(
   };
 }
 
-export async function getFinalReport(sessionId: string): Promise<FinalFeedback> {
-  const state = requireSession(sessionId);
-  return generateFinalFeedback(state);
+export async function getFinalReport(sessionId: string): Promise<{
+  feedback: FinalFeedback;
+  questionHistory: InterviewTurn[];
+}> {
+  const state = await requireSession(sessionId);
+  const feedback = await generateFinalFeedback(state);
+  return {
+    feedback,
+    questionHistory: state.questionHistory,
+  };
 }
+

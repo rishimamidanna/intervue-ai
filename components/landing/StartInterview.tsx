@@ -21,7 +21,7 @@ export function StartInterview() {
 
   function handleStart() {
     setIsNavigating(true);
-    router.push("/interview");
+    router.push("/dashboard");
   }
 
   return (

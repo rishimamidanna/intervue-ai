@@ -42,7 +42,7 @@ export interface UseInterviewReturn extends UseInterviewState {
 
 export function useInterview(): UseInterviewReturn {
   const [status, setStatus] = useState<InterviewStatus>("interviewing");
-  const [sessionId, setSessionId] = useState<string | null>("demo-session-1");
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<InterviewQuestion | null>(DEFAULT_QUESTION);
   const [lastEvaluation, setLastEvaluation] = useState<AnswerEvaluation | null>(null);
   const [progress, setProgress] = useState<InterviewProgress | null>({
@@ -66,16 +66,23 @@ export function useInterview(): UseInterviewReturn {
 
       if (res.ok) {
         const data = await res.json();
-        setSessionId(data.sessionId);
-        setCurrentQuestion(data.question);
+        if (data.sessionId) {
+          setSessionId(data.sessionId);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("intervue_session_id", data.sessionId);
+          }
+        }
+        if (data.question) setCurrentQuestion(data.question);
         setStatus("interviewing");
       } else {
-        setSessionId(`session-${Date.now()}`);
+        const fallbackSessionId = `session-${Date.now()}`;
+        setSessionId(fallbackSessionId);
         setCurrentQuestion(DEFAULT_QUESTION);
         setStatus("interviewing");
       }
     } catch {
-      setSessionId(`session-${Date.now()}`);
+      const fallbackSessionId = `session-${Date.now()}`;
+      setSessionId(fallbackSessionId);
       setCurrentQuestion(DEFAULT_QUESTION);
       setStatus("interviewing");
     } finally {
@@ -87,31 +94,42 @@ export function useInterview(): UseInterviewReturn {
     if (!answer.trim()) return;
     setIsLoading(true);
     setError(null);
+
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      activeSessionId = `session-${Date.now()}`;
+      setSessionId(activeSessionId);
+    }
+
     try {
       const res = await fetch("/api/interview/answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: sessionId || "demo-session-1",
-          questionId: currentQuestion?.id || "scaffold-q-1",
+          sessionId: activeSessionId,
+          questionId: currentQuestion?.id || "q-1",
           answer,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        setLastEvaluation(data.evaluation);
+        if (data.evaluation) {
+          setLastEvaluation(data.evaluation);
+        }
         if (data.nextQuestion) {
           setCurrentQuestion(data.nextQuestion);
         }
         if (data.progress) {
           setProgress(data.progress);
         }
-        if (data.status) {
+        if (data.done === true || data.status === "completed") {
+          setStatus("completed");
+        } else if (data.status) {
           setStatus(data.status);
         }
       } else {
-        // Fallback simulation for interactive testing
+        // Local simulation fallback if network error occurs
         setProgress((prev) => {
           const nextCount = (prev?.questionCount || 1) + 1;
           const nextDay = ((nextCount - 1) % 4) + 1;
@@ -137,7 +155,7 @@ export function useInterview(): UseInterviewReturn {
         });
       }
     } catch {
-      // Fallback simulation
+      // Local simulation fallback
       setProgress((prev) => {
         const nextCount = (prev?.questionCount || 1) + 1;
         const nextDay = ((nextCount - 1) % 4) + 1;

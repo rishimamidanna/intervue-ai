@@ -12,7 +12,7 @@
 
 // TODO: Uncomment after installing Jest or Vitest
 
-/*
+import { describe, it, expect } from 'vitest';
 import { calculateScore, calculateSessionScore, getScoringWeights } from '@/lib/scoring';
 import type { AnswerEvaluation } from '@/types/interview';
 
@@ -94,6 +94,3 @@ describe('getScoringWeights', () => {
     expect(Math.abs(sum - 1.0)).toBeLessThan(0.0001);
   });
 });
-*/
-
-export {};

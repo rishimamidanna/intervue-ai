@@ -62,29 +62,33 @@ function compositeScore(evaluation: AnswerEvaluation): number {
 export function createKnowledgeTwin(
   profile: CandidateIntelligenceProfile
 ): TopicKnowledge[] {
-  if (profile.initialKnowledgeEstimates.length > 0) {
-    return profile.initialKnowledgeEstimates.map((estimate) => ({
+  // Support both old format (initialKnowledgeEstimates) and new format
+  const estimates = (profile as unknown as Record<string, unknown>)["initialKnowledgeEstimates"] as Array<{ topic: string; estimatedScore: number; confidence: string; evidenceCount: number }> | undefined;
+  if (estimates && estimates.length > 0) {
+    return estimates.map((estimate) => ({
       topic: estimate.topic,
       estimatedScore: estimate.estimatedScore,
-      confidence: estimate.confidence,
+      confidence: estimate.confidence as ConfidenceLevel,
       evidenceCount: estimate.evidenceCount,
     }));
   }
 
-  // Fallback: create initial entries from priority and weakness signals
-  const allTopics = new Set([
-    ...profile.priorityTopics,
-    ...profile.weaknessSignals,
-    ...profile.strengthSignals,
-  ]);
+  // Fallback using new type shape (strengths / verificationAreas)
+  const strengthTopics = (profile.strengths ?? []).map((s) =>
+    typeof s === "string" ? s : (s as { topic: string }).topic
+  );
+  const weakTopics = (profile.verificationAreas ?? []).map((v) =>
+    typeof v === "string" ? v : (v as { topic: string }).topic
+  );
+  const allTopics = new Set([...strengthTopics, ...weakTopics]);
+
+  if (allTopics.size === 0) {
+    return [{ topic: "AI Engineering", estimatedScore: 5, confidence: "low", evidenceCount: 0 }];
+  }
 
   return Array.from(allTopics).map((topic) => ({
     topic,
-    estimatedScore: profile.strengthSignals.includes(topic)
-      ? 7
-      : profile.weaknessSignals.includes(topic)
-      ? 3
-      : 5,
+    estimatedScore: strengthTopics.includes(topic) ? 7 : weakTopics.includes(topic) ? 3 : 5,
     confidence: "low" as ConfidenceLevel,
     evidenceCount: 0,
   }));

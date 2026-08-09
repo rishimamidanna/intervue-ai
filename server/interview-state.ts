@@ -1,30 +1,27 @@
 /**
  * server/interview-state.ts
  *
- * Interview State Manager
+ * Interview State Manager — Persistent Redis Implementation
  *
- * Manages the authoritative server-side state for active interview sessions.
- * In this scaffold, state is held in memory. A future implementation may
- * persist state to a database (Redis, Firestore, etc.) for reliability.
+ * Manages the authoritative server-side state for active interview sessions
+ * backed by Redis (Upstash Redis). Sessions persist across server restarts
+ * and serverless Vercel function invocations.
+ *
+ * Key format: interview:{sessionId}
  *
  * Owner: Member 2 (Backend / API)
- *
- * TODO: Implement persistent session storage when a database is introduced.
- *   Current in-memory approach is suitable for the hackathon but will not
- *   survive server restarts or scale across multiple instances.
  */
 
 import type { InterviewState } from "@/types/interview";
+import {
+  getRedisSession,
+  setRedisSession,
+  deleteRedisSession,
+  hasRedisSession,
+} from "@/lib/redis";
 
 // ---------------------------------------------------------------------------
-// In-Memory Store
-// ---------------------------------------------------------------------------
-
-/** In-memory session store: sessionId → InterviewState */
-const sessionStore = new Map<string, InterviewState>();
-
-// ---------------------------------------------------------------------------
-// State Manager
+// State Manager (Async Persistent Storage)
 // ---------------------------------------------------------------------------
 
 /**
@@ -33,8 +30,11 @@ const sessionStore = new Map<string, InterviewState>();
  * @param sessionId - The session identifier
  * @returns InterviewState or undefined if session not found
  */
-export function getState(sessionId: string): InterviewState | undefined {
-  return sessionStore.get(sessionId);
+export async function getState(
+  sessionId: string
+): Promise<InterviewState | undefined> {
+  const session = await getRedisSession(sessionId);
+  return session ?? undefined;
 }
 
 /**
@@ -42,11 +42,12 @@ export function getState(sessionId: string): InterviewState | undefined {
  *
  * @param initialState - The starting state for the session
  */
-export function createState(initialState: InterviewState): void {
-  if (sessionStore.has(initialState.sessionId)) {
+export async function createState(initialState: InterviewState): Promise<void> {
+  const exists = await hasRedisSession(initialState.sessionId);
+  if (exists) {
     throw new Error(`Session already exists: ${initialState.sessionId}`);
   }
-  sessionStore.set(initialState.sessionId, initialState);
+  await setRedisSession(initialState.sessionId, initialState);
 }
 
 /**
@@ -57,11 +58,15 @@ export function createState(initialState: InterviewState): void {
  * @param nextState - The updated state to store
  * @throws {Error} If the session does not exist
  */
-export function setState(sessionId: string, nextState: InterviewState): void {
-  if (!sessionStore.has(sessionId)) {
+export async function setState(
+  sessionId: string,
+  nextState: InterviewState
+): Promise<void> {
+  const exists = await hasRedisSession(sessionId);
+  if (!exists) {
     throw new Error(`Session not found: ${sessionId}`);
   }
-  sessionStore.set(sessionId, nextState);
+  await setRedisSession(sessionId, nextState);
 }
 
 /**
@@ -70,13 +75,6 @@ export function setState(sessionId: string, nextState: InterviewState): void {
  *
  * @param sessionId - The session identifier to remove
  */
-export function deleteState(sessionId: string): void {
-  sessionStore.delete(sessionId);
-}
-
-/**
- * Returns the count of active sessions (for debugging and monitoring).
- */
-export function getActiveSessionCount(): number {
-  return sessionStore.size;
+export async function deleteState(sessionId: string): Promise<void> {
+  await deleteRedisSession(sessionId);
 }

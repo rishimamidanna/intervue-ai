@@ -10,23 +10,29 @@
  */
 
 import React, { useState } from "react";
-import { User, CheckCircle2, Lightbulb, Send } from "lucide-react";
+import { User, CheckCircle2, Lightbulb, Send, Sparkles, Loader2 } from "lucide-react";
 
 interface AnswerCardProps {
   initialAnswer?: string;
+  submittedAnswer?: string;
   timestamp?: string;
   onSendAnswer?: (answer: string) => void;
+  isAnalyzing?: boolean;
 }
 
 export function AnswerCard({
-  initialAnswer = "I would use Reciprocal Rank Fusion (RRF) as the default fusion strategy because it's robust and simple to tune. Each retriever produces a ranked list, and RRF combines them by summing the reciprocal ranks: score(d) = ∑ 1 / (k + rank_i(d)).\n\nTo balance semantic and lexical signals, I'd adjust weights based on query intent signals—such as query length, presence of domain-specific terms,|",
+  initialAnswer = "",
+  submittedAnswer,
   timestamp = "10:34 AM",
   onSendAnswer,
+  isAnalyzing = false,
 }: AnswerCardProps) {
   const [currentInput, setCurrentInput] = useState("");
 
+  const displayAnswer = submittedAnswer || initialAnswer || "No answer submitted yet.";
+
   const handleSend = () => {
-    if (onSendAnswer && currentInput.trim()) {
+    if (onSendAnswer && currentInput.trim() && !isAnalyzing) {
       onSendAnswer(currentInput);
       setCurrentInput("");
     }
@@ -52,24 +58,31 @@ export function AnswerCard({
         {/* Candidate Response Content */}
         <div className="relative bg-zinc-950/60 border border-purple-900/20 rounded-xl p-4 min-h-[120px]">
           <p className="text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line">
-            {initialAnswer}
+            {displayAnswer}
           </p>
 
           {/* Validation Indicator Badge */}
           <div className="absolute bottom-3 right-3 flex items-center gap-1.5 text-[11px] font-mono text-zinc-400">
-            <span>512 characters</span>
+            <span>{displayAnswer.length} characters</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400 fill-emerald-500/20" />
           </div>
         </div>
 
-        {/* AI Tip Banner */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300/90 text-xs italic">
-          <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 not-italic" />
-          <span>
-            <strong className="not-italic font-semibold text-amber-300">Tip:</strong>{" "}
-            Mention trade-offs, evaluation metrics, and real-world considerations.
-          </span>
-        </div>
+        {/* AI Analyzing Banner or AI Tip Banner */}
+        {isAnalyzing ? (
+          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-purple-900/40 border border-purple-500/50 text-purple-200 text-xs font-medium shadow-[0_0_15px_rgba(168,85,247,0.3)] animate-pulse">
+            <Sparkles className="w-4 h-4 text-purple-400 animate-spin shrink-0" />
+            <span>AI is analyzing your response...</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300/90 text-xs italic">
+            <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 not-italic" />
+            <span>
+              <strong className="not-italic font-semibold text-amber-300">Tip:</strong>{" "}
+              Mention trade-offs, evaluation metrics, and real-world considerations.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Answer Live Input Row */}
@@ -80,21 +93,38 @@ export function AnswerCard({
             rows={2}
             value={currentInput}
             onChange={(e) => setCurrentInput(e.target.value)}
-            placeholder="Type your answer here..."
-            className="w-full bg-transparent text-sm text-white placeholder-zinc-500 resize-none focus:outline-none font-sans"
+            disabled={isAnalyzing}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder={isAnalyzing ? "AI is analyzing your response..." : "Type your answer here..."}
+            className="w-full bg-transparent text-sm text-white placeholder-zinc-500 resize-none focus:outline-none font-sans disabled:opacity-50"
           />
           <div className="text-right text-[10px] font-mono text-zinc-500 px-1 pt-0.5">
-            {currentInput.length || 512} characters
+            {currentInput.length} characters
           </div>
         </div>
 
         {/* Send Answer Button */}
         <button
           onClick={handleSend}
-          className="h-16 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold text-sm flex items-center gap-2.5 shadow-[0_0_25px_rgba(168,85,247,0.5)] hover:shadow-[0_0_35px_rgba(168,85,247,0.8)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shrink-0"
+          disabled={isAnalyzing || !currentInput.trim()}
+          className="h-16 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold text-sm flex items-center gap-2.5 shadow-[0_0_25px_rgba(168,85,247,0.5)] hover:shadow-[0_0_35px_rgba(168,85,247,0.8)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shrink-0 disabled:opacity-50 disabled:pointer-events-none"
         >
-          <span>Send Answer</span>
-          <Send className="w-4 h-4 text-purple-200 fill-purple-200" />
+          {isAnalyzing ? (
+            <>
+              <span>Analyzing...</span>
+              <Loader2 className="w-4 h-4 text-purple-200 animate-spin" />
+            </>
+          ) : (
+            <>
+              <span>Send Answer</span>
+              <Send className="w-4 h-4 text-purple-200 fill-purple-200" />
+            </>
+          )}
         </button>
       </div>
     </div>
