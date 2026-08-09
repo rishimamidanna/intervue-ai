@@ -40,10 +40,11 @@ export function InterviewRoom() {
   const [submittedAnswer, setSubmittedAnswer] = useState<string | undefined>(undefined);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
+  const [questionKey, setQuestionKey] = useState(0); // forces re-render on new question
 
   // Initialize session via backend API on mount
   useEffect(() => {
-    startInterview("candidate_1");
+    startInterview();
   }, [startInterview]);
 
   // Redirect to report page when interview status changes to completed
@@ -75,6 +76,9 @@ export function InterviewRoom() {
     setIsAnalyzing(true);
     try {
       await submitAnswer(answer);
+      // Clear previous answer and bump key so QuestionCard re-renders with new question
+      setSubmittedAnswer(undefined);
+      setQuestionKey((k) => k + 1);
     } finally {
       setIsAnalyzing(false);
     }
@@ -155,6 +159,7 @@ export function InterviewRoom() {
             <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.42fr)_minmax(330px,0.92fr)]">
               <section className="flex min-h-0 flex-col justify-start gap-3 overflow-y-auto pr-1">
                 <QuestionCard
+                  key={questionKey}
                   questionText={questionText}
                   tags={tags}
                   topic={topic}
@@ -162,6 +167,7 @@ export function InterviewRoom() {
                   questionNumber={questionNumber}
                   totalQuestions={totalQuestions}
                 />
+
                 <AnswerCard
                   submittedAnswer={submittedAnswer}
                   onSendAnswer={handleSendAnswer}

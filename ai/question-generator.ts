@@ -42,13 +42,17 @@ export async function generateQuestion(
   plan: InterviewPlan,
   curriculum: CurriculumDay[]
 ): Promise<InterviewQuestion> {
-  // Determine the next topic to ask about
-  const askedTopics = state.questionHistory.map((t) => t.question.topic);
+  // Determine the next topic — rotate through plan.topicOrder based on question count
+  const availableTopics = plan.topicOrder.filter(
+    (t) => !(plan.deprioritisedTopics ?? []).includes(t)
+  );
+  const topicIndex = state.questionCount % Math.max(availableTopics.length, 1);
   const nextTopic =
-    plan.topicOrder.find((t) => !(plan.deprioritisedTopics ?? []).includes(t)) ??
+    availableTopics[topicIndex] ??
     state.currentTopic ??
     plan.topicOrder[0] ??
     "AI Engineering Fundamentals";
+
 
   // 1. RETRIEVAL STEP: Fetch relevant curriculum concepts, objectives, and related topics
   const retrievedContext = retrieveCurriculumContext(
@@ -105,7 +109,7 @@ SESSION STATE:
 - Current topic: ${nextTopic}
 - Candidate strengths: ${strengths}
 - Knowledge gaps: ${gaps}
-- Topics covered: ${[...new Set(askedTopics)].join(", ") || "None yet"}
+- Topics covered: ${[...new Set(state.questionHistory.map((t) => t.question.topic))].join(", ") || "None yet"}
 
 RETRIEVED CURRICULUM CONTEXT:
 - Relevant Topic: ${retrievedContext.relevantTopic} (Day ${primaryDay?.day ?? 1})

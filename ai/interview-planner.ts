@@ -115,15 +115,17 @@ Ensure targetDays has at least ${MIN_CURRICULUM_DAYS} entries and minimumQuestio
     ]);
   } catch (err) {
     console.warn("[InterviewPlanner] LLM API call failed, using curriculum fallback plan:", err);
-    const targetDays = curriculum.slice(0, 4).map((d) => d.day);
-    const topicOrder = curriculum.slice(0, 6).map((d) => d.topic);
+    // Skip setup days (1-6), focus on AI/ML content days 7+
+    const aiDays = curriculum.filter((d) => d.day >= 7);
+    const targetDays = aiDays.slice(0, Math.max(4, MIN_CURRICULUM_DAYS)).map((d) => d.day);
+    const topicOrder = aiDays.slice(0, 8).map((d) => d.topic);
     plan = {
       targetDays,
       topicOrder,
       startingDifficulty: 2,
       minimumQuestions: MIN_INTERVIEW_QUESTIONS,
       deprioritisedTopics: [],
-      rationale: "Curriculum fallback strategy due to offline/rate-limited LLM service.",
+      rationale: "Curriculum fallback strategy — focused on core AI/ML topics.",
     };
   }
 
