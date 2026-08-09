@@ -7,16 +7,25 @@
  * Displays brand logo, glowing active navigation items with usePathname route matching,
  * system status badge, and Apple Vision Pro style floating glass container.
  *
+ * Routes:
+ * - Dashboard -> /dashboard
+ * - Interview -> /interview
+ * - Digital Twin -> /digital-twin
+ * - Knowledge Graph -> /knowledge-graph
+ * - Analytics -> /analytics
+ * - Reports -> /report
+ *
  * Owner: Member 1 (Frontend / 3D Experience)
  */
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function DashboardHeader() {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard" },
@@ -36,7 +45,7 @@ export function DashboardHeader() {
     >
       <div className="rounded-2xl bg-slate-900/70 backdrop-blur-2xl border border-purple-500/30 p-3 md:px-6 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center justify-between">
         {/* Brand Logo & Identifier */}
-        <Link href="/" className="flex items-center space-x-3 group">
+        <Link href="/dashboard" className="flex items-center space-x-3 group">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 via-indigo-600 to-cyan-500 p-0.5 shadow-[0_0_15px_rgba(168,85,247,0.5)] group-hover:scale-105 transition-transform">
             <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 font-extrabold font-mono text-sm">
@@ -57,7 +66,7 @@ export function DashboardHeader() {
           </div>
         </Link>
 
-        {/* Top Navigation Links */}
+        {/* Desktop Navigation Links */}
         <nav className="hidden lg:flex items-center space-x-1 rounded-xl bg-slate-950/60 p-1 border border-purple-500/20">
           {navItems.map((item) => {
             const isActive =
@@ -87,7 +96,7 @@ export function DashboardHeader() {
           })}
         </nav>
 
-        {/* System Online Badge */}
+        {/* System Online Badge & Action Button */}
         <div className="flex items-center space-x-3">
           <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-950/80 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -103,8 +112,57 @@ export function DashboardHeader() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7-7 7" />
             </svg>
           </Link>
+
+          {/* Mobile Navigation Toggle Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden p-2 rounded-xl bg-slate-950/80 border border-purple-500/30 text-slate-300 hover:text-white"
+            aria-label="Toggle Navigation Menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
         </div>
       </div>
+
+      {/* Mobile Navigation Dropdown Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="lg:hidden mt-2 rounded-2xl bg-slate-900/90 backdrop-blur-2xl border border-purple-500/30 p-3 shadow-2xl space-y-1 overflow-hidden"
+          >
+            {navItems.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== "/" && pathname?.startsWith(item.href));
+
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider transition-all ${
+                    isActive
+                      ? "bg-purple-600/30 text-cyan-300 border border-cyan-400/40 font-semibold"
+                      : "text-slate-300 hover:bg-slate-800/50 hover:text-white"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 }

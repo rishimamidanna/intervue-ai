@@ -2,11 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
 export default function HistoryPage() {
   return (
-    <main className="min-h-screen bg-black text-slate-100 p-8 flex flex-col items-center justify-center font-sans">
-      <div className="max-w-md w-full rounded-2xl bg-slate-900/80 border border-purple-500/30 p-8 text-center backdrop-blur-xl shadow-2xl space-y-4">
+    <main className="min-h-screen bg-black text-slate-100 p-4 md:p-8 font-sans">
+      <DashboardHeader />
+
+      <div className="max-w-md w-full mx-auto my-12 rounded-3xl bg-slate-900/80 border border-purple-500/30 p-8 text-center backdrop-blur-2xl shadow-2xl space-y-4">
         <h1 className="text-2xl font-bold font-mono text-purple-400 uppercase">Interview History</h1>
         <p className="text-xs text-slate-400 font-mono">Past candidate interview sessions & transcripts archive.</p>
         <Link
