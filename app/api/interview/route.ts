@@ -75,7 +75,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       const { sessionId, message } = parseResult.data;
 
-      if (!sessionExists(sessionId)) {
+      if (!(await sessionExists(sessionId))) {
         return NextResponse.json(
           { error: `Session not found: ${sessionId}` },
           { status: 404 }

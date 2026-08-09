@@ -122,16 +122,16 @@ export async function initializeInterview(
 
   // 3. Create session with state
   const candidateId = candidate.member?.id || "unknown";
-  createSession({
+  await createSession({
     sessionId,
     candidateId,
     initialTopic: plan.topicOrder[0] ?? "",
     initialDifficulty: plan.startingDifficulty,
   });
 
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const stateWithTwin: InterviewState = { ...state, knowledgeTwin };
-  setState(sessionId, stateWithTwin);
+  await setState(sessionId, stateWithTwin);
 
   // 4. Generate opening question
   const question = await generateQuestion(stateWithTwin, plan, curriculum);
@@ -155,7 +155,7 @@ export async function handleConversationTurn(
   sessionId: string,
   message: string
 ): Promise<InterviewResponse> {
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
 
   // Use cached curriculum and plan — NO extra LLM calls
   const curriculum = await loadCurriculum();
@@ -198,7 +198,7 @@ export async function handleConversationTurn(
   if (contradiction.detected && contradiction.description) {
     nextState.contradictions = [...nextState.contradictions, contradiction.description];
   }
-  setState(sessionId, nextState);
+  await setState(sessionId, nextState);
 
   // 5. Check completion constraints
   const meetsMinQuestions = nextState.questionCount >= MIN_INTERVIEW_QUESTIONS;
@@ -207,7 +207,7 @@ export async function handleConversationTurn(
 
   if (isComplete) {
     evictPlan(sessionId); // Clean up cache on completion
-    return completeInterview(sessionId);
+    return await completeInterview(sessionId);
   }
 
   // 6. Generate next question (only one LLM call per turn now)
@@ -226,7 +226,7 @@ export async function handleConversationTurn(
 export async function completeInterview(
   sessionId: string
 ): Promise<InterviewCompletedResponse> {
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const internalFeedback = await generateFinalFeedback(state);
   const publicFeedback = toPublicFeedback(internalFeedback);
 
@@ -262,7 +262,7 @@ export async function initializeInternalInterview(
   const knowledgeTwin = createKnowledgeTwin(profile);
   const plan = await createInterviewPlan(knowledgeTwin, curriculum);
 
-  const sessionId = createSession({
+  const sessionId = await createSession({
     sessionId: crypto.randomUUID(),
     candidateId,
     initialTopic: plan.topicOrder[0] ?? "",
@@ -271,7 +271,7 @@ export async function initializeInternalInterview(
 
   cachePlan(sessionId, plan);
 
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const stateWithTwin: InterviewState = { ...state, knowledgeTwin };
   const question = await generateQuestion(stateWithTwin, plan, curriculum);
 
@@ -295,7 +295,7 @@ export async function initializeInternalInterview(
       },
     ],
   };
-  setState(sessionId, stateWithInitialQ);
+  await setState(sessionId, stateWithInitialQ);
 
   return {
     status: "interviewing",
@@ -309,7 +309,7 @@ export async function processAnswer(
   questionId: string,
   answer: string
 ): Promise<InternalSubmitAnswerResponse> {
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const curriculum = await loadCurriculum();
   const plan = getCachedPlan(sessionId) ?? await createInterviewPlan(state.knowledgeTwin, curriculum);
 
@@ -342,7 +342,7 @@ export async function processAnswer(
   if (contradiction.detected && contradiction.description) {
     nextState.contradictions = [...nextState.contradictions, contradiction.description];
   }
-  setState(sessionId, nextState);
+  await setState(sessionId, nextState);
 
   const progress: InterviewProgress = {
     questionCount: nextState.questionCount,
@@ -377,7 +377,7 @@ export async function getFinalReport(sessionId: string): Promise<{
   feedback: FinalFeedback;
   questionHistory: InterviewTurn[];
 }> {
-  const state = requireSession(sessionId);
+  const state = await requireSession(sessionId);
   const feedback = await generateFinalFeedback(state);
   return {
     feedback,

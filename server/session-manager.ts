@@ -1,17 +1,12 @@
 /**
  * server/session-manager.ts
  *
- * Session Lifecycle Manager
+ * Session Lifecycle Manager — Redis Persistent Implementation
  *
  * Handles creation, validation, and termination of interview sessions based on sessionId.
- * Provides the public interface used by API routes to manage session lifecycle.
+ * Backed by Redis (Upstash Redis) for production serverless reliability.
  *
  * Owner: Member 2 (Backend / API)
- *
- * TODO (IMPORTANT FOR VERCEL): Production serverless deployments on Vercel may not guarantee
- * durable in-memory state across separate function instances or cold starts. The backend implementation
- * owner must validate whether an external temporary session store (e.g. Redis/Upstash/KV) is required
- * before final submission.
  */
 
 import type { InterviewState, DifficultyLevel } from "@/types/interview";
@@ -34,7 +29,7 @@ export interface CreateSessionOptions {
  * @param options - Session configuration including the official request sessionId
  * @returns The sessionId of the newly created session
  */
-export function createSession(options: CreateSessionOptions): string {
+export async function createSession(options: CreateSessionOptions): Promise<string> {
   const initialState: InterviewState = {
     sessionId: options.sessionId,
     candidateId: options.candidateId,
@@ -51,7 +46,7 @@ export function createSession(options: CreateSessionOptions): string {
     questionHistory: [],
   };
 
-  createState(initialState);
+  await createState(initialState);
   return options.sessionId;
 }
 
@@ -66,8 +61,8 @@ export function createSession(options: CreateSessionOptions): string {
  * @returns InterviewState for the active session
  * @throws {Error} If the session does not exist
  */
-export function requireSession(sessionId: string): InterviewState {
-  const state = getState(sessionId);
+export async function requireSession(sessionId: string): Promise<InterviewState> {
+  const state = await getState(sessionId);
   if (!state) {
     throw new Error(`Session not found: ${sessionId}`);
   }
@@ -79,8 +74,9 @@ export function requireSession(sessionId: string): InterviewState {
  *
  * @param sessionId - The session identifier
  */
-export function sessionExists(sessionId: string): boolean {
-  return getState(sessionId) !== undefined;
+export async function sessionExists(sessionId: string): Promise<boolean> {
+  const state = await getState(sessionId);
+  return state !== undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,6 +88,6 @@ export function sessionExists(sessionId: string): boolean {
  *
  * @param sessionId - The session to terminate
  */
-export function terminateSession(sessionId: string): void {
-  deleteState(sessionId);
+export async function terminateSession(sessionId: string): Promise<void> {
+  await deleteState(sessionId);
 }
