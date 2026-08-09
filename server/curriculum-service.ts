@@ -55,13 +55,11 @@ export async function loadCurriculum(): Promise<CurriculumDay[]> {
     );
   }
 
-  const dataToValidate = (raw as Record<string, unknown>).days || raw;
+  const dataToValidate = (raw as Record<string, unknown>).days ?? raw;
   const result = safeValidate(CurriculumArraySchema, dataToValidate);
   if (!result.success) {
     throw new Error(
-      `Curriculum data validation failed:\n${result.error.issues
-        .map((i) => i.message)
-        .join("\n")}`
+      `Curriculum data validation failed:\n${result.errors.join("\n")}`
     );
   }
 

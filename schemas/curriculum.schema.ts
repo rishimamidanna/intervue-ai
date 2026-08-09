@@ -12,17 +12,39 @@ import { z } from "zod";
 export const CurriculumDaySchema = z
   .object({
     day: z.number().int().min(1, "Curriculum day must be a positive integer"),
-    topic: z.string().min(1, "Topic is required"),
+    topic: z.string().optional(),
     title: z.string().min(1, "Title is required"),
     module: z.string().optional(),
-    concepts: z
-      .array(z.string().min(1, "Concept string must not be empty"))
-      .min(1, "At least one concept is required"),
+    type: z.string().optional(),
+    concepts: z.array(z.string()).optional().default([]),
     content: z.union([z.string(), z.array(z.string())]).optional(),
     learningObjectives: z.array(z.string()).optional(),
-    tools: z.array(z.string()).optional(),
+    objectives: z.array(z.string()).optional(),
+    tools: z.array(z.string()).optional().default([]),
   })
-  .passthrough();
+  .transform((d) => ({
+    ...d,
+    // Use title as topic fallback if topic is missing
+    topic: d.topic ?? d.title,
+    // Use objectives as learningObjectives fallback
+    learningObjectives: d.learningObjectives ?? d.objectives ?? [],
+    concepts: d.concepts ?? [],
+    tools: d.tools ?? [],
+  }))
+  .pipe(
+    z.object({
+      day: z.number().int().min(1),
+      topic: z.string().min(1),
+      title: z.string().min(1),
+      module: z.string().optional(),
+      type: z.string().optional(),
+      concepts: z.array(z.string()),
+      content: z.union([z.string(), z.array(z.string())]).optional(),
+      learningObjectives: z.array(z.string()),
+      objectives: z.array(z.string()).optional(),
+      tools: z.array(z.string()),
+    }).passthrough()
+  );
 
 export const CurriculumArraySchema = z
   .array(CurriculumDaySchema)
