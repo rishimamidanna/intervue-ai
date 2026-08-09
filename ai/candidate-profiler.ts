@@ -134,11 +134,28 @@ Return this exact JSON structure (no extra keys):
   "profileSummary": "2-3 sentence narrative about the candidate's learning journey and interview focus areas"
 }`;
 
-  const profile = await createJsonCompletion<CandidateIntelligenceProfile>([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ]);
-
-  // Ensure candidateId is always set correctly
-  return { ...profile, candidateId };
+  try {
+    const profile = await createJsonCompletion<CandidateIntelligenceProfile>([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
+    return { ...profile, candidateId };
+  } catch (err) {
+    console.warn("[CandidateProfiler] LLM API call failed, using curriculum fallback profile:", err);
+    const topTopics = curriculum.slice(0, 5).map((d) => d.topic);
+    return {
+      candidateId,
+      initialKnowledgeEstimates: topTopics.map((topic) => ({
+        topic,
+        estimatedScore: 6,
+        confidence: "medium" as const,
+        evidenceCount: 1,
+      })),
+      priorityTopics: topTopics.slice(0, 3),
+      weaknessSignals: topTopics.slice(2, 4),
+      strengthSignals: [topTopics[0]],
+      expectedDepthFactor: 1.0,
+      profileSummary: `Learner profile initialized for ${member.name ?? candidateId} covering key AI engineering curriculum topics.`,
+    };
+  }
 }

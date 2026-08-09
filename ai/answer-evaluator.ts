@@ -250,10 +250,41 @@ Return this exact JSON:
   "nextAction": "follow_up|probe|increase_difficulty|decrease_difficulty|new_topic|cross_concept|contradiction"
 }`;
 
-  const evaluation = await createJsonCompletion<AnswerEvaluation>([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ]);
+  let evaluation: AnswerEvaluation;
+  try {
+    evaluation = await createJsonCompletion<AnswerEvaluation>([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
+  } catch (err) {
+    console.warn("[AnswerEvaluator] LLM API call failed, using heuristic fallback evaluation:", err);
+    const normAns = answer.toLowerCase();
+    const expected = question.expectedConcepts || [];
+    const matched = expected.filter((c) => normAns.includes(c.toLowerCase()));
+    const missing = expected.filter((c) => !normAns.includes(c.toLowerCase()));
+
+    const matchRatio = expected.length > 0 ? matched.length / expected.length : 0.5;
+    const lenBonus = Math.min(3, Math.floor(answer.trim().length / 60));
+
+    const correctnessScore = Math.min(10, Math.max(3, Math.round(matchRatio * 7 + lenBonus)));
+    const reasoningScore = Math.min(10, Math.max(3, Math.round(correctnessScore * 0.9)));
+    const depthScore = Math.min(10, Math.max(2, Math.round(correctnessScore * 0.8)));
+
+    const nextAction: AnswerEvaluation["nextAction"] =
+      correctnessScore >= 8 ? "increase_difficulty" : correctnessScore >= 5 ? "follow_up" : "decrease_difficulty";
+
+    evaluation = {
+      correctness: correctnessScore,
+      reasoning: reasoningScore,
+      depth: depthScore,
+      communication: 7,
+      engineering: Math.min(10, correctnessScore),
+      coveredConcepts: matched.length > 0 ? matched : ["General Concepts"],
+      missingConcepts: missing,
+      misconceptions: [],
+      nextAction,
+    };
+  }
 
   // Clamp all scores to valid range [0, 10]
   return {

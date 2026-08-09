@@ -129,14 +129,42 @@ Return this exact JSON:
   "expectedConcepts": ["concept1", "concept2", "concept3"]
 }`;
 
-  const raw = await createJsonCompletion<Omit<InterviewQuestion, "id">>([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ]);
+  try {
+    const raw = await createJsonCompletion<Omit<InterviewQuestion, "id">>([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
 
-  return {
-    id: generateId(),
-    ...raw,
-    difficulty: state.difficulty, // Always use state difficulty as the source of truth
-  };
+    return {
+      id: generateId(),
+      ...raw,
+      difficulty: state.difficulty,
+    };
+  } catch (err) {
+    console.warn("[QuestionGenerator] LLM API call failed, using curriculum fallback question:", err);
+    
+    // Select curriculum fallback question text based on topic and difficulty
+    const concepts = retrievedContext.keyConcepts.length > 0 ? retrievedContext.keyConcepts : ["Core Concepts", "Implementation", "Trade-offs"];
+    const learningObj = retrievedContext.learningObjectives[0] || `understanding ${nextTopic}`;
+    
+    const fallbackQuestionsByDiff: Record<number, string> = {
+      1: `Can you explain the core fundamentals of ${nextTopic} and how it fits into AI system design?`,
+      2: `Explain how ${nextTopic} balances context precision and system latency in production AI applications.`,
+      3: `How would you design a production pipeline for ${nextTopic} emphasizing ${concepts.slice(0, 2).join(" and ")}?`,
+      4: `What technical trade-offs and scaling bottlenecks arise when implementing ${nextTopic} under tight latency SLAs?`,
+      5: `Architect an enterprise-grade solution for ${nextTopic} addressing edge cases, index distribution, and fault tolerance.`
+    };
+
+    const questionText = fallbackQuestionsByDiff[state.difficulty] || fallbackQuestionsByDiff[3];
+
+    return {
+      id: generateId(),
+      text: questionText,
+      topic: nextTopic,
+      curriculumDay: primaryDay?.day ?? 1,
+      difficulty: state.difficulty,
+      reason: `Adaptive fallback question for ${nextTopic} (Level ${state.difficulty}) testing ${learningObj}.`,
+      expectedConcepts: concepts,
+    };
+  }
 }

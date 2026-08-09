@@ -107,10 +107,25 @@ Return this exact JSON structure:
 
 Ensure targetDays has at least ${MIN_CURRICULUM_DAYS} entries and minimumQuestions >= ${MIN_INTERVIEW_QUESTIONS}.`;
 
-  const plan = await createJsonCompletion<InterviewPlan>([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ]);
+  let plan: InterviewPlan;
+  try {
+    plan = await createJsonCompletion<InterviewPlan>([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ]);
+  } catch (err) {
+    console.warn("[InterviewPlanner] LLM API call failed, using curriculum fallback plan:", err);
+    const targetDays = curriculum.slice(0, 4).map((d) => d.day);
+    const topicOrder = curriculum.slice(0, 6).map((d) => d.topic);
+    plan = {
+      targetDays,
+      topicOrder,
+      startingDifficulty: 2,
+      minimumQuestions: MIN_INTERVIEW_QUESTIONS,
+      deprioritisedTopics: [],
+      rationale: "Curriculum fallback strategy due to offline/rate-limited LLM service.",
+    };
+  }
 
   // Enforce hard constraints regardless of LLM output
   return {

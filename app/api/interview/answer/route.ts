@@ -20,7 +20,7 @@ import { processAnswer } from "@/server/interview-controller";
 // ---------------------------------------------------------------------------
 
 const AnswerRequestSchema = z.object({
-  sessionId: z.string().uuid("sessionId must be a valid UUID"),
+  sessionId: z.string().min(1, "sessionId is required"),
   questionId: z.string().min(1, "questionId is required"),
   answer: z.string().min(1, "answer must not be empty"),
 });
