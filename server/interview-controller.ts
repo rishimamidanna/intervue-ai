@@ -20,7 +20,7 @@
  */
 
 import type { CandidateProfile } from "@/types/candidate";
-import type { InterviewQuestion, AnswerEvaluation, InterviewState } from "@/types/interview";
+import type { InterviewQuestion, AnswerEvaluation, InterviewState, InterviewTurn } from "@/types/interview";
 import type { FinalFeedback } from "@/types/feedback";
 import type {
   InterviewInProgressResponse,
@@ -373,7 +373,15 @@ export async function processAnswer(
   };
 }
 
-export async function getFinalReport(sessionId: string): Promise<FinalFeedback> {
+export async function getFinalReport(sessionId: string): Promise<{
+  feedback: FinalFeedback;
+  questionHistory: InterviewTurn[];
+}> {
   const state = requireSession(sessionId);
-  return generateFinalFeedback(state);
+  const feedback = await generateFinalFeedback(state);
+  return {
+    feedback,
+    questionHistory: state.questionHistory,
+  };
 }
+

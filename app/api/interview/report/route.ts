@@ -32,10 +32,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const feedback = await getFinalReport(sessionId);
+    const { feedback, questionHistory } = await getFinalReport(sessionId);
 
     return NextResponse.json(
-      { status: "completed", feedback },
+      { status: "completed", feedback, questionHistory },
       { status: 200 }
     );
   } catch (error) {

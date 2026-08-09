@@ -107,7 +107,9 @@ export function useInterview(): UseInterviewReturn {
         if (data.progress) {
           setProgress(data.progress);
         }
-        if (data.status) {
+        if (data.done === true || data.status === "completed") {
+          setStatus("completed");
+        } else if (data.status) {
           setStatus(data.status);
         }
       } else {

@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { InterviewHeader } from "./InterviewHeader";
 import { QuestionCard } from "./QuestionCard";
@@ -221,6 +222,7 @@ function evaluateCandidateAnswer(
 }
 
 export function InterviewRoom() {
+  const router = useRouter();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [submittedAnswer, setSubmittedAnswer] = useState<string | undefined>(undefined);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -300,6 +302,15 @@ export function InterviewRoom() {
 
       if (res.ok) {
         const data = await res.json();
+
+        // Redirect on interview completion
+        if (data.status === "completed" || data.done === true) {
+          setTimeout(() => {
+            setIsAnalyzing(false);
+            router.push(`/report?sessionId=${encodeURIComponent(activeSessionId)}`);
+          }, 800);
+          return;
+        }
 
         if (data.status !== "error" && data.evaluation) {
           const evalData = data.evaluation;
