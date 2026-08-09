@@ -165,37 +165,58 @@ export function useInterview(): UseInterviewReturn {
         if (res.ok) {
           const data = await res.json();
 
-          // API returns { reply, done, feedback? }
+          // API returns { reply, done, evaluation?, gaps?, concepts?, progress? }
           if (data.done === true) {
             // Interview complete — redirect to report
             setStatus("completed");
-            if (data.feedback) {
-              // Store feedback in localStorage for the report page
-              if (typeof window !== "undefined") {
-                localStorage.setItem(
-                  `intervue_feedback_${activeSessionId}`,
-                  JSON.stringify(data.feedback)
-                );
-              }
+            if (data.feedback && typeof window !== "undefined") {
+              localStorage.setItem(
+                `intervue_feedback_${activeSessionId}`,
+                JSON.stringify(data.feedback)
+              );
             }
           } else if (data.reply) {
-            // Next question received
+            // Store rich evaluation data for Knowledge Gap Detection panel
+            if (data.evaluation) {
+              setLastEvaluation({
+                correctness: data.evaluation.correctness ?? 5,
+                reasoning: data.evaluation.reasoning ?? 5,
+                depth: data.evaluation.depth ?? 5,
+                communication: data.evaluation.communication ?? 5,
+                engineering: data.evaluation.engineering ?? 5,
+                nextAction: data.evaluation.nextAction ?? "continue",
+                coveredConcepts: data.evaluation.coveredConcepts ?? [],
+                missingConcepts: data.evaluation.missingConcepts ?? [],
+                misconceptions: data.evaluation.misconceptions ?? [],
+              });
+            }
+
+            // Update progress if provided
+            if (data.progress) {
+              setProgress({
+                questionCount: data.progress.questionCount ?? (progress?.questionCount ?? 0) + 1,
+                daysCovered: data.progress.daysCovered ?? progress?.daysCovered ?? [],
+                currentDifficulty: data.progress.currentDifficulty ?? progress?.currentDifficulty ?? 2,
+                minimumRequirementsMet: data.progress.minimumRequirementsMet ?? false,
+              });
+            } else {
+              setProgress((prev) => ({
+                questionCount: (prev?.questionCount ?? 0) + 1,
+                daysCovered: prev?.daysCovered ?? [],
+                currentDifficulty: prev?.currentDifficulty ?? 2,
+                minimumRequirementsMet: (prev?.questionCount ?? 0) + 1 >= 8,
+              }));
+            }
+
+            // Set next question
             setCurrentQuestion((prev) => ({
               id: `q-${Date.now()}`,
               text: data.reply,
               topic: prev?.topic ?? "AI Engineering",
               curriculumDay: (prev?.curriculumDay ?? 1) + 1,
-              difficulty: prev?.difficulty ?? 2,
+              difficulty: data.progress?.currentDifficulty ?? prev?.difficulty ?? 2,
               reason: "AI-generated follow-up",
-              expectedConcepts: [],
-            }));
-
-            // Update progress counter
-            setProgress((prev) => ({
-              questionCount: (prev?.questionCount ?? 0) + 1,
-              daysCovered: prev?.daysCovered ?? [],
-              currentDifficulty: prev?.currentDifficulty ?? 2,
-              minimumRequirementsMet: (prev?.questionCount ?? 0) + 1 >= 8,
+              expectedConcepts: data.concepts ?? [],
             }));
           }
         } else {

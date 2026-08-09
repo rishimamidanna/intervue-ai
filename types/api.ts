@@ -33,6 +33,31 @@ export type InterviewRequest = StartInterviewRequest | ConversationTurnRequest;
 export interface InterviewInProgressResponse {
   reply: string;
   done: false;
+  /** Evaluation of the answer just submitted — powers Knowledge Gap Detection */
+  evaluation?: {
+    correctness: number;
+    reasoning: number;
+    depth: number;
+    communication: number;
+    engineering: number;
+    nextAction: string;
+    coveredConcepts: string[];
+    missingConcepts: string[];
+    misconceptions?: string[];
+  };
+  /** Detected knowledge gaps accumulated in this session */
+  gaps?: string[];
+  /** Concepts the candidate has demonstrated strong knowledge of */
+  concepts?: string[];
+  /** Contradiction detected in this answer vs prior answers */
+  contradiction?: string | null;
+  /** Current interview progress snapshot */
+  progress?: {
+    questionCount: number;
+    daysCovered: number[];
+    currentDifficulty: number;
+    minimumRequirementsMet: boolean;
+  };
 }
 
 /** Official feedback structure returned when the interview is completed */

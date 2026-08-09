@@ -222,7 +222,30 @@ export async function handleConversationTurn(
   const nextQuestion = await generateQuestion(nextState, plan, curriculum);
   return {
     reply: nextQuestion.text,
-    done: false,
+    done: false as const,
+    evaluation: {
+      correctness: evaluation.correctness,
+      reasoning: evaluation.reasoning,
+      depth: evaluation.depth,
+      communication: evaluation.communication,
+      engineering: evaluation.engineering,
+      nextAction: evaluation.nextAction,
+      coveredConcepts: evaluation.coveredConcepts ?? [],
+      missingConcepts: evaluation.missingConcepts ?? [],
+      misconceptions: evaluation.misconceptions ?? [],
+    },
+    gaps: nextState.knowledgeGaps ?? [],
+    concepts: updatedTwin
+      .filter((t) => t.estimatedScore >= 6)
+      .map((t) => t.topic)
+      .slice(0, 5),
+    contradiction: contradiction.detected ? contradiction.description : null,
+    progress: {
+      questionCount: nextState.questionCount,
+      daysCovered: nextState.daysCovered,
+      currentDifficulty: nextState.difficulty,
+      minimumRequirementsMet: meetsMinQuestions && meetsMinDays,
+    },
   };
 }
 
