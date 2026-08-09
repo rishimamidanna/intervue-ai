@@ -4,16 +4,18 @@ import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { TechnologySection } from "@/components/landing/TechnologySection";
 import { AboutSection } from "@/components/landing/AboutSection";
+import { BuiltBySection } from "@/components/landing/BuiltBySection";
 import { FooterSection } from "@/components/landing/FooterSection";
 
 export const metadata: Metadata = {
   title: "INTERVUE AI — Adaptive AI Technical Interview Intelligence",
   description:
-    "Adaptive AI interviews that understand candidate knowledge, evaluate reasoning, and create personalized growth paths. Built with advanced RAG, candidate memory, and adaptive intelligence.",
+    "Adaptive AI interviews that understand candidate knowledge, evaluate reasoning, and create personalized growth paths. Built by LogicLoom.",
 };
 
 /**
  * Landing page — Cinematic 3D Entry Point & Enterprise Product Launch Page for INTERVUE AI.
+ * Built by LogicLoom.
  *
  * Sections:
  * - Hero (3D Scene, Navigation, Headline, Subsystems)
@@ -21,6 +23,7 @@ export const metadata: Metadata = {
  * - How It Works (#how-it-works)
  * - Technology (#technology)
  * - About / Vision (#about)
+ * - Built By (#built-by)
  * - Footer
  *
  * Owner: Member 1 (Frontend / 3D Experience)
@@ -33,6 +36,7 @@ export default function HomePage() {
       <HowItWorksSection />
       <TechnologySection />
       <AboutSection />
+      <BuiltBySection />
       <FooterSection />
     </main>
   );
