@@ -1,0 +1,77 @@
+[
+  {
+    "question": "What is dense vector retrieval and vector embedding?",
+    "expectedConcepts": ["vector embedding", "dense retrieval"],
+    "expectedTopics": ["Vector Embeddings", "Dense Retrieval"]
+  },
+  {
+    "question": "What is BM25 sparse keyword search?",
+    "expectedConcepts": ["sparse search", "tf-idf", "term frequency"],
+    "expectedTopics": ["Sparse Search (BM25)", "BM25"]
+  },
+  {
+    "question": "What is Retrieval-Augmented Generation (RAG)?",
+    "expectedConcepts": ["RAG", "retrieval", "augmented generation"],
+    "expectedTopics": ["RAG Architecture", "Enterprise RAG"]
+  },
+  {
+    "question": "How do you calculate Cosine Similarity between dense vectors?",
+    "expectedConcepts": ["cosine similarity", "dot product", "vector magnitude"],
+    "expectedTopics": ["Cosine Similarity", "Vector Embeddings"]
+  },
+  {
+    "question": "What is Reciprocal Rank Fusion (RRF) in hybrid retrieval?",
+    "expectedConcepts": ["RRF", "score fusion", "hybrid search"],
+    "expectedTopics": ["Hybrid Search", "Reciprocal Rank Fusion"]
+  },
+  {
+    "question": "How does cross-encoder reranking improve search accuracy?",
+    "expectedConcepts": ["cross-encoder", "reranking", "relevance score"],
+    "expectedTopics": ["Cross-Encoder Reranking", "Reranking"]
+  },
+  {
+    "question": "Explain semantic chunking strategies for curriculum documents.",
+    "expectedConcepts": ["chunking", "semantic chunking", "sliding window"],
+    "expectedTopics": ["Document Chunking", "Semantic Chunking"]
+  },
+  {
+    "question": "Compare sparse search (BM25) vs dense vector retrieval.",
+    "expectedConcepts": ["sparse search", "dense retrieval", "keyword matching"],
+    "expectedTopics": ["Hybrid Search", "Sparse vs Dense"]
+  },
+  {
+    "question": "How does RAG differ from model fine-tuning for technical domain knowledge?",
+    "expectedConcepts": ["fine-tuning", "domain knowledge", "context insertion"],
+    "expectedTopics": ["RAG vs Fine-Tuning", "Enterprise RAG"]
+  },
+  {
+    "question": "What is the difference between HNSW vector indexing and flat search?",
+    "expectedConcepts": ["HNSW", "approximate nearest neighbor", "vector indexing"],
+    "expectedTopics": ["Vector Indexing", "HNSW"]
+  },
+  {
+    "question": "Compare top-k accuracy vs context relevance score in RAG evaluation.",
+    "expectedConcepts": ["top-k", "context relevance", "evaluation metrics"],
+    "expectedTopics": ["RAG Evaluation Metrics", "RAGAS"]
+  },
+  {
+    "question": "Explain how query decomposition splits complex questions into sub-queries.",
+    "expectedConcepts": ["query decomposition", "sub-queries", "intent parsing"],
+    "expectedTopics": ["Query Analysis", "Query Decomposition"]
+  },
+  {
+    "question": "How does hallucination guard verify groundedness in retrieved context?",
+    "expectedConcepts": ["hallucination guard", "groundedness", "unsupported claims"],
+    "expectedTopics": ["Hallucination Guard", "Grounding"]
+  },
+  {
+    "question": "Explain self-correcting RAG retry mechanisms when retrieval confidence is low.",
+    "expectedConcepts": ["self-correcting", "retry mechanism", "retrieval confidence"],
+    "expectedTopics": ["Self-Correcting RAG", "Adaptive Retrieval"]
+  },
+  {
+    "question": "How does candidate memory tracking adapt interview question difficulty?",
+    "expectedConcepts": ["candidate memory", "dynamic difficulty", "learning profile"],
+    "expectedTopics": ["Candidate Memory", "Dynamic Difficulty"]
+  }
+]

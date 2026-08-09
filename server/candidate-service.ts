@@ -1,77 +1,117 @@
 /**
  * server/candidate-service.ts
  *
- * Candidate Data & Intelligence Service
+ * Candidate Data Service
  *
- * Loads and retrieves candidate profiles from candidate data, runs candidate intelligence analysis,
- * and builds structured RAG interview contexts.
- * Delegates file loading to candidate-loader, analysis to candidate-analyzer, and context building to context-builder.
+ * Loads, validates, and retrieves candidate profiles from candidates.json.
+ * Provides typed access to candidate data and intelligence profiles.
  *
- * Owner: Member 2 (Backend / API)
+ * Owner: Member 2 (Data + RAG)
  */
 
-import type { CandidateProfile, CandidateIntelligenceProfile, StructuredInterviewContext } from "@/types/candidate";
-import { loadCandidates as loadCandidatesFromLoader, loadCandidateById as loadCandidateByIdFromLoader } from "@/lib/loaders/candidate-loader";
-import { analyzeCandidateProfile } from "@/lib/analyzer/candidate-analyzer";
-import { getRelevantKnowledgeForCandidate } from "./curriculum-service";
-import { buildInterviewContext } from "@/lib/rag/context-builder";
+import type { CandidateProfile, CandidateMember, CandidateIntelligenceProfile } from "@/types/candidate";
+import { CandidatesArraySchema } from "@/schemas/candidate.schema";
+import { safeValidate } from "@/lib/validation";
+import { analyzeCandidateIntelligence } from "./candidate-intelligence";
+import { loadCurriculum } from "./curriculum-service";
 
 // ---------------------------------------------------------------------------
-// Data Loading Cache
+// Data Loading & Caching
 // ---------------------------------------------------------------------------
 
 let _candidateCache: CandidateProfile[] | null = null;
 
 /**
- * Loads all candidate profiles from data/candidates.json via candidate loader.
- * Validates required fields using Zod schemas.
+ * Loads and validates all candidate profiles from data/candidates.json.
+ * Normalizes top-level candidate properties and nested member details.
  *
  * @returns Array of CandidateProfile objects
- * @throws {Error} If the data cannot be loaded or fails validation
+ * @throws {Error} If the data cannot be loaded or fails schema validation
  */
 export async function loadCandidates(): Promise<CandidateProfile[]> {
   if (_candidateCache) return _candidateCache;
 
-  _candidateCache = await loadCandidatesFromLoader();
+  let raw: unknown;
+  try {
+    raw = (await import("@/data/candidates.json")).default;
+  } catch (err) {
+    throw new Error(
+      `Failed to load candidates.json: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  const result = safeValidate(CandidatesArraySchema, raw);
+  if (!result.success) {
+    throw new Error(
+      `Candidate data validation failed:\n${result.errors.join("\n")}`
+    );
+  }
+
+  _candidateCache = result.data.map((c) => {
+    const id = c.id ?? c.member?.id ?? "unknown";
+    const role = c.role ?? c.member?.jobRole ?? "Software Engineer";
+    const experience = c.experience ?? c.member?.yearsExperience ?? 0;
+
+    const member: CandidateMember = c.member ?? {
+      id,
+      jobRole: role,
+      yearsExperience: experience,
+    };
+
+    return {
+      ...c,
+      id,
+      role,
+      experience,
+      member,
+    };
+  });
+
   return _candidateCache;
 }
 
 /**
- * Retrieves a single candidate profile by candidateId.
+ * Retrieves a single candidate profile by candidate identifier.
+ * Matches against root candidate id or candidate member.id.
  *
- * @param candidateId - The candidate identifier (e.g. "CAND-001")
+ * @param candidateId - The candidate identifier
  * @returns CandidateProfile or null if not found
  */
 export async function getCandidateById(
   candidateId: string
 ): Promise<CandidateProfile | null> {
-  if (_candidateCache) {
-    return _candidateCache.find((c) => c.member.id === candidateId) ?? null;
-  }
-  return loadCandidateByIdFromLoader(candidateId);
+  const candidates = await loadCandidates();
+  return (
+    candidates.find(
+      (c) => c.id === candidateId || c.member?.id === candidateId
+    ) ?? null
+  );
 }
 
 /**
- * Generates an end-to-end StructuredInterviewContext for a candidate by ID.
- * Integrates candidate profile validation, intelligence analysis, curriculum retrieval, and context synthesis.
+ * Retrieves the generated Candidate Intelligence Profile for a given candidate ID.
  *
- * @param candidateId - Candidate identifier (e.g. "CAND-001")
- * @returns StructuredInterviewContext or null if candidate not found
+ * @param candidateId - The candidate identifier
+ * @returns CandidateIntelligenceProfile or null if candidate not found
  */
-export async function getInterviewContextForCandidate(
+export async function getCandidateIntelligenceProfile(
   candidateId: string
-): Promise<StructuredInterviewContext | null> {
+): Promise<CandidateIntelligenceProfile | null> {
   const candidate = await getCandidateById(candidateId);
   if (!candidate) return null;
 
-  const profile = analyzeCandidateProfile(candidate);
-  const retrievalContext = await getRelevantKnowledgeForCandidate(profile);
+  let curriculum;
+  try {
+    curriculum = await loadCurriculum();
+  } catch {
+    curriculum = undefined;
+  }
 
-  return buildInterviewContext(profile, retrievalContext);
+  return analyzeCandidateIntelligence(candidate, curriculum);
 }
 
 /**
- * Clears the candidate cache (useful for testing).
+ * Clears the candidate cache (useful for testing or dynamic reloads).
  */
 export function clearCandidateCache(): void {
   _candidateCache = null;

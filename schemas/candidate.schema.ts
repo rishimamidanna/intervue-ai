@@ -1,47 +1,70 @@
 /**
  * schemas/candidate.schema.ts
  *
- * Zod validation schema for candidate profiles and candidate JSON data datasets.
- * Ensures data integrity when loading raw JSON files before passing objects to AI and server modules.
+ * Zod validation schema for Candidate Profile data.
+ * Ensures candidate objects loaded from candidates.json adhere to required data structures.
  *
- * Owner: Shared (Data & Backend Layer)
+ * Owner: Member 2 (Data + RAG)
  */
 
 import { z } from "zod";
 
-export const CandidateMemberSchema = z.object({
-  id: z.string().min(1, "Candidate ID must not be empty"),
-  name: z.string().min(1, "Candidate name must not be empty"),
-  jobRole: z.string().min(1, "Job role must not be empty"),
-  yearsExperience: z.number().min(0, "Years of experience must be non-negative"),
-  education: z.string().min(1, "Education must not be empty"),
-  status: z.string().min(1, "Status must not be empty"),
-});
-
+/**
+ * Individual candidate mission attempt state.
+ * Important: passed=false and skipped=true represent distinct mission states.
+ */
 export const CandidateMissionSchema = z.object({
-  day: z.number().int().min(1, "Mission day must be at least 1").max(31, "Mission day must be at most 31"),
-  title: z.string().min(1, "Mission title must not be empty"),
-  passed: z.boolean().optional(),
-  attempts: z.number().int().min(0, "Mission attempts must be non-negative").optional(),
-  skipped: z.boolean().optional(),
+  day: z.number().int().min(1, "Mission day must be a positive integer"),
+  title: z.string().min(1, "Mission title is required"),
+  attempts: z.number().int().min(0, "Attempts must be a non-negative integer").default(0),
+  passed: z.boolean(),
+  skipped: z.boolean(),
 });
 
-export const CandidateSignalsSchema = z.object({
-  commitDays: z.number().int().min(0, "Commit days must be non-negative"),
-  missionsCompleted: z.number().int().min(0, "Missions completed must be non-negative"),
-  missionsFirstTry: z.number().int().min(0, "Missions first try must be non-negative"),
+export const CandidateSignalsSchema = z
+  .object({
+    commitDays: z.number().int().min(0).default(0),
+    missionsCompleted: z.number().int().min(0).default(0),
+    missionsFirstTry: z.number().int().min(0).default(0),
+  })
+  .passthrough();
+
+export const CandidateMemberSchema = z.object({
+  id: z.string().min(1, "Member id is required"),
+  name: z.string().optional(),
+  jobRole: z.string().min(1, "Member jobRole is required"),
+  yearsExperience: z.number().min(0, "yearsExperience must be non-negative"),
+  education: z.string().optional(),
+  status: z.string().optional(),
 });
 
-export const CandidateProfileSchema = z.object({
-  member: CandidateMemberSchema,
-  missions: z.array(CandidateMissionSchema),
-  signals: CandidateSignalsSchema,
-});
+export const CandidateProfileSchema = z
+  .object({
+    id: z.string().min(1, "Candidate id is required").optional(),
+    role: z.string().min(1, "Candidate role is required").optional(),
+    experience: z.number().min(0, "Experience must be non-negative").optional(),
+    missions: z.array(CandidateMissionSchema),
+    attempts: z.number().int().min(0).optional(),
+    passed: z.boolean().optional(),
+    skipped: z.boolean().optional(),
+    signals: CandidateSignalsSchema.optional(),
+    member: CandidateMemberSchema.optional(),
+  })
+  .passthrough();
 
-export const CandidatesDataSchema = z.object({
-  candidates: z.array(CandidateProfileSchema).min(1, "Candidates list must contain at least 1 profile"),
-});
-
-export type CandidateMemberInput = z.input<typeof CandidateMemberSchema>;
-export type CandidateProfileInput = z.input<typeof CandidateProfileSchema>;
-export type CandidatesDataInput = z.input<typeof CandidatesDataSchema>;
+export const CandidatesArraySchema = z
+  .array(CandidateProfileSchema)
+  .refine(
+    (candidates) => {
+      const ids = new Set<string>();
+      for (const c of candidates) {
+        const id = c.id ?? c.member?.id;
+        if (id) {
+          if (ids.has(id)) return false;
+          ids.add(id);
+        }
+      }
+      return true;
+    },
+    { message: "Candidate IDs must be unique across candidate profiles" }
+  );

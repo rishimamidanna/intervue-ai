@@ -46,6 +46,7 @@ import { decideNextAction } from "@/ai/decision-engine";
 import { applyTurnToState } from "@/ai/state-updater";
 import { detectContradiction } from "@/ai/contradiction-detector";
 import { generateFinalFeedback } from "@/ai/feedback-generator";
+import { defaultInterviewMemoryRAG } from "./interview-memory";
 
 // ---------------------------------------------------------------------------
 // Plan Cache — avoids re-running createInterviewPlan() on every turn
@@ -179,6 +180,13 @@ export async function handleConversationTurn(
       detectContradiction(message, state),
     ]);
 
+  // Update Candidate Learning Memory
+  await defaultInterviewMemoryRAG.updateCandidateLearningMemory(
+    state.candidateId,
+    question,
+    evaluation
+  );
+
   // 2. Update Knowledge Twin (pure function, no LLM)
   const updatedTwin = updateKnowledgeTwin(state.knowledgeTwin, question, evaluation);
 
@@ -296,6 +304,12 @@ export async function processAnswer(
     detectContradiction(answer, state),
   ]);
 
+  // Update Candidate Learning Memory
+  await defaultInterviewMemoryRAG.updateCandidateLearningMemory(
+    state.candidateId,
+    question,
+    evaluation
+  );
   const updatedTwin = updateKnowledgeTwin(state.knowledgeTwin, question, evaluation);
   const decision = decideNextAction(evaluation, state, plan);
   const nextState = applyTurnToState(state, question, answer, evaluation, decision, updatedTwin);

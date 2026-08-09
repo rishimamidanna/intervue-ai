@@ -1,0 +1,331 @@
+[
+  {
+    "id": "cand-test-715",
+    "previousQuestions": [
+      "What is BM25 sparse search?"
+    ],
+    "weakAreas": [
+      "BM25"
+    ],
+    "strengths": [
+      "Vector Embeddings"
+    ],
+    "performance": [
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:47:47.586Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:47:47.586Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:48:00.550Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:48:00.550Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:51:21.228Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:51:21.228Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:52:37.918Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:52:37.919Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:53:56.182Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:53:56.183Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:55:20.295Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:55:20.295Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:56:44.797Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:56:44.798Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T08:57:48.595Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T08:57:48.596Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:04:04.304Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:04:04.304Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:06:05.898Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:06:05.898Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:07:22.503Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:07:22.504Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:08:48.118Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:08:48.118Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:10:46.399Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:10:46.400Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:12:07.134Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:12:07.134Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:13:33.938Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:13:33.939Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:15:17.862Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:15:17.862Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:24:13.086Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:24:13.086Z",
+        "notes": "Strong grasp of dense vector representations"
+      },
+      {
+        "topic": "BM25",
+        "score": 0.45,
+        "attempts": 2,
+        "timestamp": "2026-08-08T09:25:59.000Z",
+        "notes": "Candidate struggled with inverted index mechanics for [REDACTED_EMAIL]"
+      },
+      {
+        "topic": "Vector Embeddings",
+        "score": 0.9,
+        "attempts": 1,
+        "timestamp": "2026-08-08T09:25:59.001Z",
+        "notes": "Strong grasp of dense vector representations"
+      }
+    ]
+  },
+  {
+    "id": "candidate-m1-01",
+    "previousQuestions": [],
+    "weakAreas": [],
+    "strengths": [],
+    "performance": []
+  },
+  {
+    "id": "non-existent-candidate-id-999",
+    "previousQuestions": [],
+    "weakAreas": [],
+    "strengths": [],
+    "performance": []
+  },
+  {
+    "id": "candidate-gap-123",
+    "previousQuestions": [],
+    "weakAreas": [
+      "Cosine Similarity"
+    ],
+    "strengths": [],
+    "performance": []
+  },
+  {
+    "id": "candidate-feedback-999",
+    "previousQuestions": [
+      "What are the exact metrics used in RAG Evaluation?",
+      "How do you calculate Cosine Similarity between dense vectors?"
+    ],
+    "weakAreas": [
+      "BM25",
+      "RAG Evaluation Metrics"
+    ],
+    "strengths": [
+      "Cosine Similarity"
+    ],
+    "performance": [],
+    "feedback": [
+      {
+        "question": "What are the exact metrics used in RAG Evaluation?",
+        "performance": "incorrect",
+        "difficulty": "Intermediate",
+        "weakness": "RAG Evaluation Metrics"
+      },
+      {
+        "question": "How do you calculate Cosine Similarity between dense vectors?",
+        "performance": "correct",
+        "difficulty": "Beginner",
+        "weakness": "Cosine Similarity"
+      }
+    ]
+  },
+  {
+    "id": "candidate-graph-123",
+    "previousQuestions": [],
+    "weakAreas": [
+      "Vector Search"
+    ],
+    "strengths": [
+      "Embeddings"
+    ],
+    "performance": []
+  }
+]
