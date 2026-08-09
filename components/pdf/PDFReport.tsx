@@ -249,10 +249,10 @@ export function PDFReport({ data }: { data: ReportPayload }) {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                     <div className="p-1.5 rounded bg-emerald-50 text-emerald-900">
-                      <strong>✓ Positive:</strong> {item.reasoning.map((r) => safeText(r)).join(", ")}
+                      <strong>✓ Positive:</strong> {(item.reasoning || []).map((r) => safeText(r)).join(", ")}
                     </div>
                     <div className="p-1.5 rounded bg-amber-50 text-amber-900">
-                      <strong>⚠ Missing:</strong> {item.missing.length > 0 ? item.missing.map((m) => safeText(m)).join(", ") : "None"}
+                      <strong>⚠ Missing:</strong> {(item.missing || []).length > 0 ? (item.missing || []).map((m) => safeText(m)).join(", ") : "None"}
                     </div>
                   </div>
                 </PDFCard>

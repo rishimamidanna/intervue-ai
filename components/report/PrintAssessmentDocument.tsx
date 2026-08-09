@@ -246,15 +246,15 @@ export function PrintAssessmentDocument({ data }: { data: ReportPayload }) {
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="p-2 rounded bg-emerald-50 border border-emerald-200 text-emerald-900">
                   <strong>✓ Positive Evidence:</strong>
-                  {item.reasoning.map((r, i) => (
+                  {(item.reasoning || []).map((r, i) => (
                     <div key={i}>• {safeText(r)}</div>
                   ))}
                 </div>
 
                 <div className="p-2 rounded bg-amber-50 border border-amber-200 text-amber-900">
                   <strong>⚠ Missing Concepts:</strong>
-                  {item.missing.length > 0 ? (
-                    item.missing.map((m, i) => <div key={i}>• {safeText(m)}</div>)
+                  {(item.missing || []).length > 0 ? (
+                    (item.missing || []).map((m, i) => <div key={i}>• {safeText(m)}</div>)
                   ) : (
                     <div>No critical missing concepts.</div>
                   )}

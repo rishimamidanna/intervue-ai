@@ -20,11 +20,18 @@ export interface QuestionBreakdownItem {
   topic: string;
   answerSummary?: string;
   score: number;
-  reasoning: any[];
-  missing: any[];
+  reasoning?: any[];
+  missing?: any[];
+  strengths?: string[];
+  missingConcepts?: string[];
   ragSource: string;
   similarity: number;
   retrievedContext?: string;
+  previousDifficulty?: number;
+  decision?: string;
+  newDifficulty?: number;
+  reason?: string;
+  confidence?: string;
 }
 
 export interface EvaluationBreakdownProps {
@@ -134,7 +141,7 @@ export function EvaluationBreakdown({
                   ✓ Positive Evidence Identified
                 </span>
                 <div className="space-y-1">
-                  {item.reasoning.map((r, i) => (
+                  {(item.reasoning || item.strengths || []).map((r, i) => (
                     <div key={i} className="text-xs font-mono text-emerald-300 flex items-center space-x-1.5">
                       <span>✓</span>
                       <span>{safeText(r)}</span>
@@ -148,9 +155,9 @@ export function EvaluationBreakdown({
                 <span className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-wider block">
                   ⚠ Missing Evidence & Gaps
                 </span>
-                {item.missing.length > 0 ? (
+                {(item.missing || item.missingConcepts || []).length > 0 ? (
                   <div className="space-y-1">
-                    {item.missing.map((m, i) => (
+                    {(item.missing || item.missingConcepts || []).map((m, i) => (
                       <div key={i} className="text-xs font-mono text-amber-300 flex items-center space-x-1.5">
                         <span>⚠</span>
                         <span>{safeText(m)}</span>
