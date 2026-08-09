@@ -4,8 +4,18 @@
  * components/interview/Sidebar.tsx
  *
  * Left Sidebar Navigation for INTERVUE AI Command Center.
- * Features Next.js App Router navigation, active route highlighting,
+ * Uses universal Logo component, Next.js App Router navigation, active route highlighting using usePathname(),
  * candidate profile, session details, and End Interview action.
+ *
+ * Routes Supported:
+ * - Dashboard -> /dashboard
+ * - Live Interview -> /interview
+ * - Interview History -> /history
+ * - Digital Twin -> /digital-twin
+ * - Knowledge Graph -> /knowledge-graph
+ * - Analytics -> /analytics
+ * - Reports -> /report
+ * - Settings -> /settings
  *
  * Owner: Member 1 (Frontend / UI)
  */
@@ -23,8 +33,8 @@ import {
   FileText,
   Settings,
   ChevronRight,
-  Hexagon,
 } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 interface SidebarProps {
   onEndInterview?: () => void;
@@ -41,22 +51,16 @@ export function Sidebar({ onEndInterview }: SidebarProps) {
     { label: "Knowledge Graph", href: "/knowledge-graph", icon: Network },
     { label: "Analytics", href: "/analytics", icon: BarChart3 },
     { label: "Reports", href: "/report", icon: FileText },
-    { label: "Settings", href: "#settings", icon: Settings },
+    { label: "Settings", href: "/settings", icon: Settings },
   ];
 
   return (
     <aside className="w-64 shrink-0 bg-[#090612]/90 backdrop-blur-2xl border-r border-purple-900/20 flex flex-col justify-between p-4 min-h-screen text-xs select-none">
       {/* Top Brand Logo */}
       <div className="space-y-6">
-        <Link href="/" className="flex items-center gap-3 px-2 py-1 group">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-violet-900 shadow-[0_0_15px_rgba(168,85,247,0.4)] group-hover:scale-105 transition-transform">
-            <Hexagon className="w-5 h-5 text-white fill-purple-500/30" />
-            <div className="absolute w-2 h-2 bg-purple-300 rounded-full animate-ping" />
-          </div>
-          <div className="flex items-center tracking-tight text-base font-bold text-white font-sans">
-            INTERVUE<span className="ml-1.5 text-purple-400">AI</span>
-          </div>
-        </Link>
+        <div className="px-2 py-1">
+          <Logo variant="sidebar" href="/dashboard" />
+        </div>
 
         {/* Navigation Items */}
         <nav className="space-y-1">
@@ -64,7 +68,7 @@ export function Sidebar({ onEndInterview }: SidebarProps) {
             const Icon = item.icon;
             const isActive =
               pathname === item.href ||
-              (item.href !== "/" && item.href !== "#settings" && pathname?.startsWith(item.href));
+              (item.href !== "/" && pathname?.startsWith(item.href));
 
             return (
               <Link
@@ -94,7 +98,7 @@ export function Sidebar({ onEndInterview }: SidebarProps) {
       {/* Bottom Cards Section */}
       <div className="space-y-3 pt-4 border-t border-purple-900/20">
         {/* Candidate Profile Card */}
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/40 border border-purple-900/20 backdrop-blur-md hover:border-purple-500/30 transition-all cursor-pointer">
+        <Link href="/digital-twin" className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/40 border border-purple-900/20 backdrop-blur-md hover:border-purple-500/30 transition-all cursor-pointer block">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-700 to-indigo-900 border border-purple-400/40 flex items-center justify-center font-semibold text-white text-xs shadow-inner">
               KT
@@ -105,7 +109,7 @@ export function Sidebar({ onEndInterview }: SidebarProps) {
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-zinc-500" />
-        </div>
+        </Link>
 
         {/* Session Details Card */}
         <div className="p-3 rounded-xl bg-zinc-900/40 border border-purple-900/20 backdrop-blur-md space-y-2">
@@ -129,12 +133,6 @@ export function Sidebar({ onEndInterview }: SidebarProps) {
               <span className="text-zinc-500">Question Set</span>
               <span className="text-zinc-300 font-medium text-right truncate max-w-[110px]">
                 RAG & Search Systems
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-zinc-500">Time Elapsed</span>
-              <span className="text-purple-300 font-medium font-mono">
-                00:24:38
               </span>
             </div>
           </div>

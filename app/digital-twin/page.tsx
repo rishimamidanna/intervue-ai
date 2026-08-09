@@ -14,6 +14,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { PageTransition } from "@/components/common/PageTransition";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DigitalTwinCore } from "@/components/digital-twin/DigitalTwinCore";
 import { SkillNode, SkillNodeData } from "@/components/digital-twin/SkillNode";
@@ -80,7 +81,8 @@ export default function DigitalTwinPage() {
     : [];
 
   return (
-    <main className="min-h-screen bg-black text-slate-100 font-sans selection:bg-cyan-500 selection:text-white p-4 md:p-8 lg:p-12 relative overflow-x-hidden">
+    <PageTransition>
+      <main className="min-h-screen bg-black text-slate-100 font-sans selection:bg-cyan-500 selection:text-white p-4 md:p-8 lg:p-12 relative overflow-x-hidden">
       {/* Deep Space Background Radial Ambient Glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 right-1/4 w-[650px] h-[650px] bg-cyan-950/20 rounded-full blur-[150px]" />
@@ -112,17 +114,17 @@ export default function DigitalTwinPage() {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold font-sans text-white">
-              No Digital Twin Found
+              No active interview session
             </h2>
             <p className="text-sm text-slate-300 font-mono">
-              Complete an AI interview to build your Knowledge Twin.
+              Start an AI interview to build your Knowledge Twin.
             </p>
           </div>
           <Link
             href="/interview"
             className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 text-white font-semibold font-sans text-sm shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-[1.02] transition-all"
           >
-            <span>Launch AI Interview</span>
+            <span>Start Interview</span>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7-7 7" />
             </svg>
@@ -213,5 +215,6 @@ export default function DigitalTwinPage() {
         </motion.div>
       )}
     </main>
+    </PageTransition>
   );
 }

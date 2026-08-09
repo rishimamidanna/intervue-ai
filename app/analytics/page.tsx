@@ -28,6 +28,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { PageTransition } from "@/components/common/PageTransition";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { PerformanceCore } from "@/components/analytics/PerformanceCore";
 import { PerformanceRadar } from "@/components/analytics/PerformanceRadar";
@@ -91,7 +92,8 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-slate-100 font-sans selection:bg-purple-500 selection:text-white p-4 md:p-8 lg:p-12 relative overflow-x-hidden">
+    <PageTransition>
+      <main className="min-h-screen bg-black text-slate-100 font-sans selection:bg-purple-500 selection:text-white p-4 md:p-8 lg:p-12 relative overflow-x-hidden">
       {/* Deep Space Background Grid & Radial Glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 right-1/4 w-[650px] h-[650px] bg-purple-950/20 rounded-full blur-[150px]" />
@@ -123,17 +125,17 @@ export default function AnalyticsPage() {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold font-sans text-white">
-              No Evaluation Intelligence Logged
+              No active interview session
             </h2>
             <p className="text-sm text-slate-300 font-mono">
-              Start your first AI interview to generate AI Evaluation Intelligence telemetry.
+              Start an AI interview to generate your live evaluation intelligence telemetry.
             </p>
           </div>
           <Link
             href="/interview"
-            className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 text-white font-semibold font-sans text-sm shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-[1.02] transition-all"
+            className="inline-flex items-center space-x-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 text-white font-semibold font-sans text-sm shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-[1.02] transition-all"
           >
-            <span>Launch AI Interview</span>
+            <span>Start Interview</span>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7-7 7" />
             </svg>
@@ -270,5 +272,6 @@ export default function AnalyticsPage() {
         </motion.div>
       )}
     </main>
+    </PageTransition>
   );
 }

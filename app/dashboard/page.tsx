@@ -13,6 +13,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { PageTransition } from "@/components/common/PageTransition";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
 import { KnowledgeCore } from "@/components/dashboard/KnowledgeCore";
@@ -85,7 +86,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-slate-100 font-sans selection:bg-purple-500 selection:text-white p-4 md:p-8 lg:p-12 relative overflow-x-hidden">
+    <PageTransition>
+      <main className="min-h-screen bg-black text-slate-100 font-sans selection:bg-purple-500 selection:text-white p-4 md:p-8 lg:p-12 relative overflow-x-hidden">
       {/* Background Deep Space Radial Glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 left-1/3 w-[650px] h-[650px] bg-purple-900/15 rounded-full blur-[150px]" />
@@ -267,5 +269,6 @@ export default function DashboardPage() {
         </motion.div>
       )}
     </main>
+    </PageTransition>
   );
 }

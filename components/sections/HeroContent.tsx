@@ -104,11 +104,11 @@ export function HeroContent() {
             transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
           },
         }}
-        className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.18] mb-6"
+        className="font-hero-display text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-[-0.03em] text-white leading-[1.08] mb-6"
       >
         The Future of <br />
         Technical <br />
-        <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-300 to-cyan-300 drop-shadow-[0_0_25px_rgba(167,139,250,0.4)]">
+        <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-violet-300 to-cyan-300 drop-shadow-[0_0_35px_rgba(168,85,247,0.45)]">
           Interviews
         </span>
       </motion.h1>
