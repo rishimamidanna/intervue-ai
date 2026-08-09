@@ -18,6 +18,9 @@ interface AnswerCardProps {
   timestamp?: string;
   onSendAnswer?: (answer: string) => void;
   isAnalyzing?: boolean;
+  isCompleted?: boolean;
+  onViewReport?: () => void;
+  onStartNewInterview?: () => void;
 }
 
 export function AnswerCard({
@@ -26,13 +29,20 @@ export function AnswerCard({
   timestamp = "10:34 AM",
   onSendAnswer,
   isAnalyzing = false,
+  isCompleted = false,
+  onViewReport,
+  onStartNewInterview,
 }: AnswerCardProps) {
   const [currentInput, setCurrentInput] = useState("");
 
   const displayAnswer = submittedAnswer || initialAnswer || "No answer submitted yet.";
 
   const handleSend = () => {
-    if (onSendAnswer && currentInput.trim() && !isAnalyzing) {
+    if (isCompleted && onViewReport) {
+      onViewReport();
+      return;
+    }
+    if (onSendAnswer && currentInput.trim() && !isAnalyzing && !isCompleted) {
       onSendAnswer(currentInput);
       setCurrentInput("");
     }
@@ -68,11 +78,36 @@ export function AnswerCard({
           </div>
         </div>
 
-        {/* AI Analyzing Banner or AI Tip Banner */}
+        {/* AI Analyzing Banner, Completed Banner, or AI Tip Banner */}
         {isAnalyzing ? (
           <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-purple-900/40 border border-purple-500/50 text-purple-200 text-xs font-medium shadow-[0_0_15px_rgba(168,85,247,0.3)] animate-pulse">
             <Sparkles className="w-4 h-4 text-purple-400 animate-spin shrink-0" />
             <span>AI is analyzing your response...</span>
+          </div>
+        ) : isCompleted ? (
+          <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-medium shadow-[0_0_15px_rgba(52,211,153,0.2)] flex-wrap">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Interview Completed — All 8 questions evaluated!</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {onViewReport && (
+                <button
+                  onClick={onViewReport}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 border border-emerald-500/40 font-mono text-xs font-semibold transition-all"
+                >
+                  View Report &rarr;
+                </button>
+              )}
+              {onStartNewInterview && (
+                <button
+                  onClick={onStartNewInterview}
+                  className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-mono text-xs font-bold shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all"
+                >
+                  + Start New Interview
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300/90 text-xs italic">
@@ -93,14 +128,20 @@ export function AnswerCard({
             rows={2}
             value={currentInput}
             onChange={(e) => setCurrentInput(e.target.value)}
-            disabled={isAnalyzing}
+            disabled={isAnalyzing || isCompleted}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
             }}
-            placeholder={isAnalyzing ? "AI is analyzing your response..." : "Type your answer here..."}
+            placeholder={
+              isCompleted
+                ? "Interview Completed — Click 'Start New Interview' to begin a fresh adaptive evaluation session."
+                : isAnalyzing
+                ? "AI is analyzing your response..."
+                : "Type your answer here..."
+            }
             className="w-full bg-transparent text-sm text-white placeholder-zinc-500 resize-none focus:outline-none font-sans disabled:opacity-50"
           />
           <div className="text-right text-[10px] font-mono text-zinc-500 px-1 pt-0.5">
@@ -108,24 +149,38 @@ export function AnswerCard({
           </div>
         </div>
 
-        {/* Send Answer Button */}
-        <button
-          onClick={handleSend}
-          disabled={isAnalyzing || !currentInput.trim()}
-          className="h-16 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold text-sm flex items-center gap-2.5 shadow-[0_0_25px_rgba(168,85,247,0.5)] hover:shadow-[0_0_35px_rgba(168,85,247,0.8)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shrink-0 disabled:opacity-50 disabled:pointer-events-none"
-        >
-          {isAnalyzing ? (
-            <>
-              <span>Analyzing...</span>
-              <Loader2 className="w-4 h-4 text-purple-200 animate-spin" />
-            </>
-          ) : (
-            <>
-              <span>Send Answer</span>
-              <Send className="w-4 h-4 text-purple-200 fill-purple-200" />
-            </>
-          )}
-        </button>
+        {/* Send Answer Button / Completed Actions */}
+        {isCompleted ? (
+          <div className="flex items-center gap-2 shrink-0">
+            {onStartNewInterview && (
+              <button
+                onClick={onStartNewInterview}
+                className="h-16 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-600 to-cyan-600 text-white font-bold text-sm flex items-center gap-2 shadow-[0_0_25px_rgba(168,85,247,0.5)] hover:shadow-[0_0_35px_rgba(168,85,247,0.8)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+              >
+                <span>Start New Interview</span>
+                <Sparkles className="w-4 h-4 text-cyan-200" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={handleSend}
+            disabled={isAnalyzing || !currentInput.trim()}
+            className="h-16 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold text-sm flex items-center gap-2.5 shadow-[0_0_25px_rgba(168,85,247,0.5)] hover:shadow-[0_0_35px_rgba(168,85,247,0.8)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shrink-0 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {isAnalyzing ? (
+              <>
+                <span>Analyzing...</span>
+                <Loader2 className="w-4 h-4 text-purple-200 animate-spin" />
+              </>
+            ) : (
+              <>
+                <span>Send Answer</span>
+                <Send className="w-4 h-4 text-purple-200 fill-purple-200" />
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

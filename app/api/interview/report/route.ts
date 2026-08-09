@@ -12,8 +12,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFinalReport } from "@/server/interview-controller";
 import { getState } from "@/server/interview-state";
+import { calculateFinalScore } from "@/lib/scoring";
 import { withErrorHandler } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const GET = withErrorHandler(async (request: NextRequest): Promise<NextResponse> => {
   const sessionId = request.nextUrl.searchParams.get("sessionId");
@@ -127,40 +131,27 @@ export const GET = withErrorHandler(async (request: NextRequest): Promise<NextRe
         questionBreakdown.push({
           qNum: `Q${idx + 1}`,
           topic: q?.topic || `Topic ${idx + 1}`,
-          answerSummary: turn.answer ? `Candidate response to ${q?.topic || 'technical question'}.` : "Candidate response evaluated by AI engine.",
+          answerSummary: turn.answer ? turn.answer : "Candidate response evaluated by AI engine.",
           score: turnScore,
           strengths: ev.coveredConcepts && ev.coveredConcepts.length > 0 ? ev.coveredConcepts : ["Demonstrated technical understanding"],
           reasoning: ev.coveredConcepts && ev.coveredConcepts.length > 0 ? ev.coveredConcepts : ["Demonstrated technical understanding"],
           missingConcepts: ev.missingConcepts || [],
           missing: ev.missingConcepts || [],
-          ragSource: `Day ${10 + idx * 3}: ${q?.topic || "RAG Core"}`,
+          ragSource: `Day ${q?.curriculumDay || (10 + idx * 3)}: ${q?.topic || "RAG Core"}`,
           similarity: 90 + (idx % 5),
-          retrievedContext: `Retrieved curriculum node for ${q?.topic || 'RAG Architecture'} with grounded vector embeddings and cosine similarity scoring.`,
-          previousDifficulty: prevDiff,
+          retrievedContext: turn.retrievedContext || `Retrieved curriculum node for ${q?.topic || 'RAG Architecture'} with grounded vector embeddings and cosine similarity scoring.`,
+          previousDifficulty: turn.previousDifficulty || prevDiff,
           decision: turnDecision,
-          newDifficulty: nextDiff,
-          reason: turnReason,
+          newDifficulty: turn.newDifficulty || nextDiff,
+          reason: turn.decisionReason || turnReason,
           confidence: "95%",
         });
       }
     });
 
-    const count = turns.length || 1;
-    const radarMetrics = {
-      correctness: turns.length > 0 ? Math.round((sumCorrectness / count) * 10) : 85,
-      reasoning: turns.length > 0 ? Math.round((sumReasoning / count) * 10) : 78,
-      depth: turns.length > 0 ? Math.round((sumDepth / count) * 10) : 70,
-      communication: turns.length > 0 ? Math.round((sumCommunication / count) * 10) : 88,
-      engineering: turns.length > 0 ? Math.round((sumEngineering / count) * 10) : 80,
-    };
-
-    const overallScore = feedback.overallScore || Math.round(
-      radarMetrics.correctness * 0.35 +
-      radarMetrics.reasoning * 0.25 +
-      radarMetrics.depth * 0.2 +
-      radarMetrics.communication * 0.1 +
-      radarMetrics.engineering * 0.1
-    );
+    const finalScore = state.finalScore || calculateFinalScore(turns.map((t) => t.evaluation));
+    const overallScore = finalScore.overallScore;
+    const radarMetrics = finalScore.rubricBreakdown;
 
     return NextResponse.json({
       hasSession: true,
@@ -241,6 +232,42 @@ export const GET = withErrorHandler(async (request: NextRequest): Promise<NextRe
           newDifficulty: 4,
           reason: "Candidate exceeded expectations; AI introduced advanced system design questions.",
           confidence: "97%",
+        },
+        {
+          qNum: "Q4",
+          topic: "Graph Indexing & HNSW",
+          answerSummary: "Explained multi-layer proximity graphs and skip-list entry point routing with logarithmic search complexity.",
+          score: 89,
+          strengths: ["Multi-layer skip list routing intuition", "Logarithmic graph traversal math"],
+          reasoning: ["Multi-layer skip list routing intuition", "Logarithmic graph traversal math"],
+          missingConcepts: ["Omitted scale factor formula"],
+          missing: ["Omitted scale factor formula"],
+          ragSource: "Day 24: Graph Indexing",
+          similarity: 93,
+          retrievedContext: "Hierarchical Navigable Small World graphs enable O(log N) search latency by constructing hierarchical layers of proximity graphs.",
+          previousDifficulty: 4,
+          decision: "Maintain Difficulty",
+          newDifficulty: 4,
+          reason: "Candidate demonstrated solid grasp of graph algorithms; AI maintained advanced difficulty level.",
+          confidence: "96%",
+        },
+        {
+          qNum: "Q5",
+          topic: "Production RAG System Architecture",
+          answerSummary: "Synthesized full end-to-end vector pipeline architecture including async ingestion, GPU batch reranking, and cache warming.",
+          score: 93,
+          strengths: ["Full end-to-end vector pipeline architecture", "Async queue ingestion & GPU batch reranking"],
+          reasoning: ["Full end-to-end vector pipeline architecture", "Async queue ingestion & GPU batch reranking"],
+          missingConcepts: [],
+          missing: [],
+          ragSource: "Day 30: System Synthesis",
+          similarity: 98,
+          retrievedContext: "Production RAG architecture couples streaming message queues with distributed GPU inference nodes for low-latency retrieval.",
+          previousDifficulty: 4,
+          decision: "Escalate to Mastery",
+          newDifficulty: 5,
+          reason: "Candidate demonstrated comprehensive engineering synthesis across all core dimensions.",
+          confidence: "98%",
         },
       ],
       beforeScore: 62,

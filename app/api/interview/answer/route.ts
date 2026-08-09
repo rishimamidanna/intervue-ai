@@ -19,6 +19,9 @@ import { processAnswer } from "@/server/interview-controller";
 import { withErrorHandler } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const AnswerRequestSchema = z.object({
   sessionId: z.string().min(1, "sessionId is required"),
   questionId: z.string().min(1, "questionId is required"),
@@ -51,7 +54,31 @@ export const POST = withErrorHandler(async (request: NextRequest): Promise<NextR
       questionCount: response.progress.questionCount,
     });
 
-    return NextResponse.json(response, { status: 200 });
+    const isCompleted = response.status === "completed" || response.nextQuestion === null || response.progress.questionCount > 8;
+
+    const formattedNextQuestion = response.nextQuestion
+      ? {
+          ...response.nextQuestion,
+          question: response.nextQuestion.text,
+          concepts: response.nextQuestion.expectedConcepts,
+        }
+      : null;
+
+    return NextResponse.json({
+      ...response,
+      success: true,
+      status: isCompleted ? "completed" : response.status,
+      done: isCompleted,
+      completed: isCompleted,
+      reportReady: isCompleted,
+      nextQuestion: formattedNextQuestion,
+      progress: {
+        ...response.progress,
+        currentQuestion: response.progress.questionCount,
+        totalQuestions: 8,
+      },
+      message: isCompleted ? "Interview completed" : "Answer evaluated",
+    }, { status: 200 });
   } catch (error) {
     const isNotFound = error instanceof Error && error.message.includes("not found");
     if (isNotFound) {

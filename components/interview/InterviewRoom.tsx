@@ -34,6 +34,8 @@ export function InterviewRoom() {
     progress,
     isLoading: isApiLoading,
     startInterview,
+    restoreSession,
+    startNewInterview,
     submitAnswer,
   } = useInterview();
 
@@ -41,17 +43,36 @@ export function InterviewRoom() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
 
-  // Initialize session via backend API on mount
-  useEffect(() => {
-    startInterview("candidate_1");
-  }, [startInterview]);
+  const isInitializedRef = React.useRef(false);
 
-  // Redirect to report page when interview status changes to completed
+  // Restore existing session or initialize new session on mount (RUN ONCE ONLY)
   useEffect(() => {
-    if (status === "completed" && sessionId) {
-      router.push(`/report?sessionId=${encodeURIComponent(sessionId)}`);
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
+
+    async function initOrRestore() {
+      setIsAnalyzing(false);
+      let activeSessionId: string | null = null;
+      if (typeof window !== "undefined") {
+        console.log("[DEBUG] intervue_session_id in localStorage:", localStorage.getItem("intervue_session_id"));
+        const urlParams = new URLSearchParams(window.location.search);
+        activeSessionId = urlParams.get("sessionId") || localStorage.getItem("intervue_session_id");
+      }
+
+      if (activeSessionId) {
+        const restored = await restoreSession(activeSessionId);
+        if (restored) {
+          // Session restored! Do NOT call startInterview() again!
+          return;
+        }
+      }
+
+      // No active session or restore failed -> start fresh interview
+      await startInterview("candidate_1");
     }
-  }, [status, sessionId, router]);
+
+    initOrRestore();
+  }, [restoreSession, startInterview]);
 
   // Live timer effect
   useEffect(() => {
@@ -71,10 +92,19 @@ export function InterviewRoom() {
   };
 
   const handleSendAnswer = async (answer: string) => {
+    console.log("SUBMIT ANSWER", {
+      sessionId,
+      questionNumber,
+      currentQuestion,
+      answer,
+    });
     setSubmittedAnswer(answer);
     setIsAnalyzing(true);
     try {
       await submitAnswer(answer);
+      setSubmittedAnswer(undefined);
+    } catch (err) {
+      console.error("[InterviewRoom] handleSendAnswer error:", err);
     } finally {
       setIsAnalyzing(false);
     }
@@ -150,6 +180,10 @@ export function InterviewRoom() {
               currentQuestion={questionNumber}
               totalQuestions={totalQuestions}
               timerFormatted={formatTimer(timerSeconds)}
+              onStartNewInterview={() => {
+                setSubmittedAnswer(undefined);
+                startNewInterview("candidate_1");
+              }}
             />
 
             <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.42fr)_minmax(330px,0.92fr)]">
@@ -165,7 +199,20 @@ export function InterviewRoom() {
                 <AnswerCard
                   submittedAnswer={submittedAnswer}
                   onSendAnswer={handleSendAnswer}
-                  isAnalyzing={isAnalyzing || isApiLoading}
+                  isAnalyzing={isAnalyzing}
+                  isCompleted={status === "completed"}
+                  onViewReport={() => {
+                    if (sessionId) {
+                      router.push(`/report?sessionId=${encodeURIComponent(sessionId)}`);
+                    } else {
+                      router.push("/report");
+                    }
+                  }}
+                  onStartNewInterview={() => {
+                    setSubmittedAnswer(undefined);
+                    setIsAnalyzing(false);
+                    startNewInterview("candidate_1");
+                  }}
                 />
               </section>
 
@@ -174,7 +221,7 @@ export function InterviewRoom() {
               </section>
             </div>
 
-            <AnalysisBar isAnalyzing={isAnalyzing || isApiLoading} />
+            <AnalysisBar isAnalyzing={isAnalyzing} />
           </main>
 
           <div className="hidden min-h-0 overflow-y-auto pr-1 min-[1360px]:block [&>aside]:w-full">

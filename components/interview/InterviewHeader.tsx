@@ -16,12 +16,14 @@ interface InterviewHeaderProps {
   currentQuestion?: number;
   totalQuestions?: number;
   timerFormatted?: string;
+  onStartNewInterview?: () => void;
 }
 
 export function InterviewHeader({
   currentQuestion = 8,
   totalQuestions = 15,
   timerFormatted = "00:24:38",
+  onStartNewInterview,
 }: InterviewHeaderProps) {
   const progressPercent = Math.min(
     100,
@@ -44,8 +46,17 @@ export function InterviewHeader({
         </span>
       </div>
 
-      {/* Right: Timer & Progress */}
-      <div className="flex items-center gap-6">
+      {/* Right: Timer, Progress & Start New Button */}
+      <div className="flex items-center gap-4">
+        {onStartNewInterview && (
+          <button
+            onClick={onStartNewInterview}
+            className="px-2.5 py-1 rounded-xl bg-purple-950/80 border border-purple-500/40 text-purple-200 hover:text-white font-mono text-[11px] font-semibold transition-all hover:bg-purple-900/60"
+          >
+            + Start New
+          </button>
+        )}
+
         {/* Timer Card */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/60 border border-purple-900/30 text-zinc-300 font-mono text-xs">
           <Clock className="w-3.5 h-3.5 text-purple-400" />

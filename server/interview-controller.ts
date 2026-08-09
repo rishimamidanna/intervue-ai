@@ -32,9 +32,11 @@ import type {
   InterviewProgress,
 } from "@/types/api";
 
-import { MIN_INTERVIEW_QUESTIONS, MIN_CURRICULUM_DAYS } from "@/lib/constants";
+import { MIN_INTERVIEW_QUESTIONS, MIN_CURRICULUM_DAYS, MAX_INTERVIEW_QUESTIONS } from "@/lib/constants";
+import { calculateFinalScore } from "@/lib/scoring";
 import { createSession, requireSession } from "./session-manager";
-import { setState } from "./interview-state";
+import { setState, getState } from "./interview-state";
+import { logger } from "@/lib/logger";
 import { loadCurriculum, retrieveCurriculumContext } from "./curriculum-service";
 import { analyzeCandidate } from "@/ai/candidate-profiler";
 import { createKnowledgeTwin, updateKnowledgeTwin } from "@/ai/knowledge-twin";
@@ -56,7 +58,13 @@ import { generateFinalFeedback } from "@/ai/feedback-generator";
  * The plan is created ONCE during initializeInterview and reused for all turns.
  * This eliminates a full LLM round-trip on every conversation turn.
  */
-const planCache = new Map<string, InterviewPlan>();
+declare global {
+  var _intervuePlanCache: Map<string, InterviewPlan> | undefined;
+}
+
+const planCache =
+  globalThis._intervuePlanCache ??
+  (globalThis._intervuePlanCache = new Map<string, InterviewPlan>());
 
 function cachePlan(sessionId: string, plan: InterviewPlan): void {
   planCache.set(sessionId, plan);
@@ -227,6 +235,10 @@ export async function completeInterview(
   sessionId: string
 ): Promise<InterviewCompletedResponse> {
   const state = await requireSession(sessionId);
+  if (!state.finalScore && state.questionHistory?.length > 0) {
+    state.finalScore = calculateFinalScore(state.questionHistory.map((t) => t.evaluation));
+    await setState(sessionId, state);
+  }
   const internalFeedback = await generateFinalFeedback(state);
   const publicFeedback = toPublicFeedback(internalFeedback);
 
@@ -242,9 +254,59 @@ export async function completeInterview(
 // ---------------------------------------------------------------------------
 
 export async function initializeInternalInterview(
-  candidateId: string
+  candidateId: string,
+  existingSessionId?: string | null,
+  forceNew?: boolean
 ): Promise<InternalStartInterviewResponse> {
   const curriculum = await loadCurriculum();
+
+  // 1. Session Recovery Check
+  if (existingSessionId && !forceNew) {
+    const existingState = await getState(existingSessionId);
+    if (existingState && existingState.questionHistory && existingState.questionHistory.length > 0) {
+      logger.info("[initializeInternalInterview] Resuming existing active session", {
+        sessionId: existingSessionId,
+        questionCount: existingState.questionCount,
+        historyLength: existingState.questionHistory.length,
+      });
+
+      const turns = existingState.questionHistory;
+      const lastTurn = turns[turns.length - 1];
+
+      // Re-cache plan in memory if evicted
+      if (!getCachedPlan(existingSessionId)) {
+        const plan = await createInterviewPlan(existingState.knowledgeTwin || [], curriculum);
+        cachePlan(existingSessionId, plan);
+      }
+
+      const isCompleted =
+        (existingState.questionCount || turns.length) >= MIN_INTERVIEW_QUESTIONS &&
+        (existingState.daysCovered || []).length >= MIN_CURRICULUM_DAYS;
+
+      // Extract last completed evaluation if available
+      const lastEvaluation =
+        turns.length > 1 && turns[turns.length - 2].evaluation?.correctness !== undefined
+          ? turns[turns.length - 2].evaluation
+          : lastTurn.evaluation?.correctness !== undefined && lastTurn.evaluation?.correctness > 0
+          ? lastTurn.evaluation
+          : null;
+
+      return {
+        status: isCompleted ? "completed" : "interviewing",
+        sessionId: existingSessionId,
+        question: lastTurn.question,
+        lastEvaluation,
+        progress: {
+          questionCount: Math.max(existingState.questionCount || 0, turns.length),
+          daysCovered: existingState.daysCovered?.length > 0 ? existingState.daysCovered : [lastTurn.question?.curriculumDay || 1],
+          currentDifficulty: existingState.difficulty ?? lastTurn.question?.difficulty ?? 2,
+          minimumRequirementsMet: isCompleted,
+        },
+      };
+    }
+  }
+
+  // 2. Create Brand New Session
   const dummyCandidate: CandidateProfile = {
     member: {
       id: candidateId,
@@ -277,23 +339,8 @@ export async function initializeInternalInterview(
 
   const stateWithInitialQ: InterviewState = {
     ...stateWithTwin,
-    questionHistory: [
-      {
-        question,
-        answer: "",
-        evaluation: {
-          correctness: 0,
-          reasoning: 0,
-          depth: 0,
-          communication: 0,
-          engineering: 0,
-          coveredConcepts: [],
-          missingConcepts: [],
-          misconceptions: [],
-          nextAction: "follow_up",
-        },
-      },
-    ],
+    currentQuestion: question,
+    questionHistory: [],
   };
   await setState(sessionId, stateWithInitialQ);
 
@@ -301,6 +348,12 @@ export async function initializeInternalInterview(
     status: "interviewing",
     sessionId,
     question,
+    progress: {
+      questionCount: 1,
+      daysCovered: [question.curriculumDay || 1],
+      currentDifficulty: question.difficulty || 2,
+      minimumRequirementsMet: false,
+    },
   };
 }
 
@@ -310,12 +363,48 @@ export async function processAnswer(
   answer: string
 ): Promise<InternalSubmitAnswerResponse> {
   const state = await requireSession(sessionId);
+
+  console.log("SESSION BEFORE", state);
+  console.log("SESSION BEFORE UPDATE", state);
+  console.log("QUESTION COUNT", state.questionCount);
+  console.log("ANSWER RECEIVED");
+  console.log("CURRENT QUESTION COUNT", state.questionCount);
+  console.log("QUESTION BEFORE", state.currentQuestion);
+
+  // Guard: If session has already recorded MAX_INTERVIEW_QUESTIONS (8 turns), reject further turn submissions
+  if (state.questionHistory.length >= MAX_INTERVIEW_QUESTIONS) {
+    const lastTurn = state.questionHistory.length > 0 ? state.questionHistory[state.questionHistory.length - 1] : null;
+    return {
+      status: "completed",
+      evaluation: lastTurn?.evaluation || {
+        correctness: 8,
+        reasoning: 8,
+        depth: 8,
+        communication: 8,
+        engineering: 8,
+        coveredConcepts: [],
+        missingConcepts: [],
+        misconceptions: [],
+        nextAction: "follow_up",
+      },
+      nextQuestion: null,
+      progress: {
+        questionCount: MAX_INTERVIEW_QUESTIONS,
+        daysCovered: state.daysCovered,
+        currentDifficulty: state.difficulty,
+        minimumRequirementsMet: true,
+      },
+    };
+  }
+
   const curriculum = await loadCurriculum();
   const plan = getCachedPlan(sessionId) ?? await createInterviewPlan(state.knowledgeTwin, curriculum);
 
-  // Fallback to active question from history if questionId lookup fails
+  // Match current active question or fallback to history / generator
   const question =
+    (state.currentQuestion?.id === questionId ? state.currentQuestion : null) ??
     state.questionHistory.map((t) => t.question).find((q) => q.id === questionId) ??
+    state.currentQuestion ??
     (state.questionHistory.length > 0
       ? state.questionHistory[state.questionHistory.length - 1].question
       : null) ??
@@ -337,15 +426,24 @@ export async function processAnswer(
 
   const updatedTwin = updateKnowledgeTwin(state.knowledgeTwin, question, evaluation);
   const decision = decideNextAction(evaluation, state, plan);
-  const nextState = applyTurnToState(state, question, answer, evaluation, decision, updatedTwin);
+  const nextState = applyTurnToState(
+    state,
+    question,
+    answer,
+    evaluation,
+    decision,
+    updatedTwin,
+    retrievedContext ? (retrievedContext as any).contextText || JSON.stringify(retrievedContext) : undefined
+  );
 
   if (contradiction.detected && contradiction.description) {
     nextState.contradictions = [...nextState.contradictions, contradiction.description];
   }
-  await setState(sessionId, nextState);
 
   const progress: InterviewProgress = {
-    questionCount: nextState.questionCount,
+    // nextState.questionCount represents the number of completed questions.
+    // So the current question being asked is nextState.questionCount + 1.
+    questionCount: Math.min(MAX_INTERVIEW_QUESTIONS, nextState.questionCount + 1),
     daysCovered: nextState.daysCovered,
     currentDifficulty: nextState.difficulty,
     minimumRequirementsMet:
@@ -353,17 +451,44 @@ export async function processAnswer(
       nextState.daysCovered.length >= MIN_CURRICULUM_DAYS,
   };
 
-  if (decision.shouldEnd && progress.minimumRequirementsMet) {
+  const isComplete =
+    nextState.questionCount >= MAX_INTERVIEW_QUESTIONS ||
+    (decision.shouldEnd && progress.minimumRequirementsMet);
+
+  if (isComplete) {
     evictPlan(sessionId);
+    const finalScore = nextState.finalScore || calculateFinalScore(nextState.questionHistory.map((t) => t.evaluation));
+    const completedState = {
+      ...nextState,
+      finalScore,
+      currentQuestion: undefined,
+    };
+    await setState(sessionId, completedState);
+    console.log("SESSION AFTER SAVE", completedState);
+    console.log("QUESTION AFTER", null);
     return {
       status: "completed",
       evaluation,
       nextQuestion: null,
-      progress,
+      progress: {
+        ...progress,
+        questionCount: Math.min(MAX_INTERVIEW_QUESTIONS, nextState.questionCount),
+        minimumRequirementsMet: true,
+      },
     };
   }
 
+  console.log("GENERATING NEXT QUESTION");
   const nextQuestion = await generateQuestion(nextState, plan, curriculum);
+  console.log("NEXT QUESTION GENERATED", nextQuestion);
+  console.log("GENERATED NEXT QUESTION", nextQuestion);
+  nextState.currentQuestion = nextQuestion;
+  await setState(sessionId, nextState);
+
+  console.log("SESSION AFTER SAVE", nextState);
+  console.log("SESSION AFTER UPDATE", nextState);
+  console.log("NEW QUESTION", nextQuestion);
+  console.log("QUESTION AFTER", nextQuestion);
 
   return {
     status: "interviewing",

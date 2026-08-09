@@ -50,7 +50,8 @@ export function applyTurnToState(
   answer: string,
   evaluation: AnswerEvaluation,
   decision: DecisionResult,
-  updatedTwin: TopicKnowledge[]
+  updatedTwin: TopicKnowledge[],
+  retrievedContext?: string
 ): InterviewState {
   // Extract a concise claim from the answer to track for contradiction detection
   // We take the first 200 chars as a representative claim
@@ -91,19 +92,31 @@ export function applyTurnToState(
     updatedGaps = updatedGaps.filter((g) => g !== question.topic && g !== "No actual explanation provided");
   }
 
+  const existingHistory = Array.isArray(state?.questionHistory) ? state.questionHistory : [];
+  const newQuestionHistory = [
+    ...existingHistory,
+    {
+      question,
+      answer,
+      evaluation,
+      retrievedContext,
+      previousDifficulty: question?.difficulty || 2,
+      newDifficulty: decision.newDifficulty ?? state.difficulty ?? 2,
+      decisionReason: decision.rationale,
+      timestamp: new Date().toISOString(),
+    },
+  ];
+
   return {
     ...state,
-    questionCount: state.questionCount + 1,
+    questionCount: newQuestionHistory.length,
     currentTopic: decision.nextTopic,
     difficulty: decision.newDifficulty ?? state.difficulty,
     daysCovered: newDaysCovered,
     knowledgeTwin: updatedTwin,
     strengths: updatedStrengths,
     knowledgeGaps: updatedGaps,
-    questionHistory: [
-      ...state.questionHistory,
-      { question, answer, evaluation },
-    ],
+    questionHistory: newQuestionHistory,
     misconceptions: [
       ...state.misconceptions,
       ...evaluation.misconceptions,

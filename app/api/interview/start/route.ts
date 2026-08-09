@@ -19,8 +19,13 @@ import { initializeInternalInterview } from "@/server/interview-controller";
 import { withErrorHandler } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const StartRequestSchema = z.object({
   candidateId: z.string().min(1, "candidateId is required"),
+  sessionId: z.string().nullable().optional(),
+  forceNew: z.boolean().optional(),
 });
 
 export const POST = withErrorHandler(async (request: NextRequest): Promise<NextResponse> => {
@@ -38,8 +43,8 @@ export const POST = withErrorHandler(async (request: NextRequest): Promise<NextR
     );
   }
 
-  const { candidateId } = parseResult.data;
-  const response = await initializeInternalInterview(candidateId);
+  const { candidateId, sessionId, forceNew } = parseResult.data;
+  const response = await initializeInternalInterview(candidateId, sessionId, forceNew);
 
   if (response.status === "error") {
     return NextResponse.json(response, { status: 404 });

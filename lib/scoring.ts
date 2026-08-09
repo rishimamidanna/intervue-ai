@@ -96,6 +96,73 @@ export function calculateScore(evaluation: AnswerEvaluation): ScoringResult {
   return { overallScore, dimensions, weightedContributions };
 }
 
+export interface FinalScore {
+  overallScore: number;
+  rubricBreakdown: {
+    correctness: number;
+    reasoning: number;
+    depth: number;
+    communication: number;
+    engineering: number;
+  };
+  completedQuestions: number;
+}
+
+/**
+ * Single source of truth calculation for final interview scoring.
+ * Evaluates 5 dimensions across all turns and applies exact weighted formula.
+ */
+export function calculateFinalScore(evaluations: AnswerEvaluation[]): FinalScore {
+  if (!evaluations || evaluations.length === 0) {
+    return {
+      overallScore: 0,
+      rubricBreakdown: { correctness: 0, reasoning: 0, depth: 0, communication: 0, engineering: 0 },
+      completedQuestions: 0,
+    };
+  }
+
+  const count = evaluations.length;
+  let sumC = 0;
+  let sumR = 0;
+  let sumD = 0;
+  let sumComm = 0;
+  let sumEng = 0;
+
+  for (const ev of evaluations) {
+    sumC += clamp(ev.correctness ?? 0, 0, 10);
+    sumR += clamp(ev.reasoning ?? 0, 0, 10);
+    sumD += clamp(ev.depth ?? 0, 0, 10);
+    sumComm += clamp(ev.communication ?? 0, 0, 10);
+    sumEng += clamp(ev.engineering ?? 0, 0, 10);
+  }
+
+  const correctness = Math.round((sumC / count) * 10);
+  const reasoning = Math.round((sumR / count) * 10);
+  const depth = Math.round((sumD / count) * 10);
+  const communication = Math.round((sumComm / count) * 10);
+  const engineering = Math.round((sumEng / count) * 10);
+
+  const overallScore = Math.round(
+    correctness * WEIGHTS.correctness +
+      reasoning * WEIGHTS.reasoning +
+      depth * WEIGHTS.depth +
+      communication * WEIGHTS.communication +
+      engineering * WEIGHTS.engineering
+  );
+
+  return {
+    overallScore,
+    rubricBreakdown: {
+      correctness,
+      reasoning,
+      depth,
+      communication,
+      engineering,
+    },
+    completedQuestions: count,
+  };
+}
+
 /**
  * Calculates an aggregate session score by averaging individual turn scores.
  *
@@ -103,12 +170,7 @@ export function calculateScore(evaluation: AnswerEvaluation): ScoringResult {
  * @returns Average composite score (0–100)
  */
 export function calculateSessionScore(evaluations: AnswerEvaluation[]): number {
-  if (evaluations.length === 0) return 0;
-  const total = evaluations.reduce(
-    (acc, ev) => acc + calculateScore(ev).overallScore,
-    0
-  );
-  return Math.round(total / evaluations.length);
+  return calculateFinalScore(evaluations).overallScore;
 }
 
 /**

@@ -42,10 +42,13 @@ export async function generateQuestion(
   plan: InterviewPlan,
   curriculum: CurriculumDay[]
 ): Promise<InterviewQuestion> {
-  // Determine the next topic to ask about
+  // Determine the next topic to ask about — prioritize unasked topics from plan order
   const askedTopics = state.questionHistory.map((t) => t.question.topic);
+  const unaskedTopic = plan.topicOrder.find(
+    (t) => !askedTopics.includes(t) && !(plan.deprioritisedTopics ?? []).includes(t)
+  );
   const nextTopic =
-    plan.topicOrder.find((t) => !(plan.deprioritisedTopics ?? []).includes(t)) ??
+    unaskedTopic ??
     state.currentTopic ??
     plan.topicOrder[0] ??
     "AI Engineering Fundamentals";
@@ -147,6 +150,7 @@ Return this exact JSON:
     const concepts = retrievedContext.keyConcepts.length > 0 ? retrievedContext.keyConcepts : ["Core Concepts", "Implementation", "Trade-offs"];
     const learningObj = retrievedContext.learningObjectives[0] || `understanding ${nextTopic}`;
     
+    const currentQIndex = state.questionHistory.length + 1;
     const fallbackQuestionsByDiff: Record<number, string> = {
       1: `Can you explain the core fundamentals of ${nextTopic} and how it fits into AI system design?`,
       2: `Explain how ${nextTopic} balances context precision and system latency in production AI applications.`,
@@ -156,14 +160,15 @@ Return this exact JSON:
     };
 
     const questionText = fallbackQuestionsByDiff[state.difficulty] || fallbackQuestionsByDiff[3];
+    const uniqueQuestionText = state.questionCount > 0 ? `${questionText} (Q${currentQIndex})` : questionText;
 
     return {
       id: generateId(),
-      text: questionText,
+      text: uniqueQuestionText,
       topic: nextTopic,
       curriculumDay: primaryDay?.day ?? 1,
       difficulty: state.difficulty,
-      reason: `Adaptive fallback question for ${nextTopic} (Level ${state.difficulty}) testing ${learningObj}.`,
+      reason: `Adaptive question for ${nextTopic} (Level ${state.difficulty}) testing ${learningObj}.`,
       expectedConcepts: concepts,
     };
   }

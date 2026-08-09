@@ -41,26 +41,47 @@ export default function HistoryPage() {
         }
 
         if (activeSessionId) {
-          setHistoryItems([
-            {
-              id: activeSessionId,
-              role: "AI / ML Systems Engineer",
-              score: 87,
-              questionsCount: 5,
-              date: "Today",
-              duration: "24m 38s",
-              status: "completed",
-            },
-            {
-              id: "session_prev_01",
-              role: "Senior AI Engineer (RAG & Retrieval)",
-              score: 82,
-              questionsCount: 4,
-              date: "3 days ago",
-              duration: "18m 12s",
-              status: "completed",
-            },
-          ]);
+          try {
+            const res = await fetch(`/api/interview/report?sessionId=${encodeURIComponent(activeSessionId)}`);
+            if (res.ok) {
+              const data = await res.json();
+              setHistoryItems([
+                {
+                  id: activeSessionId,
+                  role: "AI / ML Systems Engineer",
+                  score: data.overallScore ?? 0,
+                  questionsCount: data.questionsEvaluated || data.questionBreakdown?.length || 8,
+                  date: "Today",
+                  duration: "24m 38s",
+                  status: "completed",
+                },
+              ]);
+            } else {
+              setHistoryItems([
+                {
+                  id: activeSessionId,
+                  role: "AI / ML Systems Engineer",
+                  score: 87,
+                  questionsCount: 8,
+                  date: "Today",
+                  duration: "24m 38s",
+                  status: "completed",
+                },
+              ]);
+            }
+          } catch {
+            setHistoryItems([
+              {
+                id: activeSessionId,
+                role: "AI / ML Systems Engineer",
+                score: 87,
+                questionsCount: 8,
+                date: "Today",
+                duration: "24m 38s",
+                status: "completed",
+              },
+            ]);
+          }
         } else {
           setHistoryItems([]);
         }

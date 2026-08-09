@@ -9,5 +9,8 @@
 /** Minimum number of questions required before an interview can be marked completed */
 export const MIN_INTERVIEW_QUESTIONS = 8;
 
+/** Maximum number of questions allowed per interview session */
+export const MAX_INTERVIEW_QUESTIONS = 8;
+
 /** Minimum number of distinct curriculum days that must be covered before completion */
 export const MIN_CURRICULUM_DAYS = 4;

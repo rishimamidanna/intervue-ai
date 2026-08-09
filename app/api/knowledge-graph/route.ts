@@ -21,6 +21,9 @@ export interface RetrievedChunkItem {
  *
  * Owner: Member 2 (Backend / API)
  */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get("sessionId");

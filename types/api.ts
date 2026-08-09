@@ -70,6 +70,8 @@ export interface InternalStartInterviewResponse {
   status: InterviewStatus;
   sessionId: string;
   question: InterviewQuestion;
+  lastEvaluation?: AnswerEvaluation | null;
+  progress?: InterviewProgress;
   error?: string;
 }
 

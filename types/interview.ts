@@ -133,6 +133,11 @@ export interface InterviewTurn {
   /** Raw text submitted by the candidate */
   answer: string;
   evaluation: AnswerEvaluation;
+  retrievedContext?: string;
+  previousDifficulty?: DifficultyLevel;
+  newDifficulty?: DifficultyLevel;
+  decisionReason?: string;
+  timestamp?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +173,10 @@ export interface InterviewState {
   contradictions: string[];
   /** Live Candidate Knowledge Twin — updated after each turn */
   knowledgeTwin: TopicKnowledge[];
-  /** Full history of all turns in this session */
+  /** Chronological history of completed turns */
   questionHistory: InterviewTurn[];
+  /** Active question currently awaiting candidate response */
+  currentQuestion?: InterviewQuestion;
+  /** Persisted authoritative single source of truth final score */
+  finalScore?: import("@/lib/scoring").FinalScore;
 }

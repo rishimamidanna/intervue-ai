@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getState } from "@/server/interview-state";
+import { calculateFinalScore } from "@/lib/scoring";
 import { withErrorHandler } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 
@@ -74,6 +75,9 @@ export interface AnalyticsPayload {
  *
  * Owner: Member 2 (Backend / API)
  */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get("sessionId");
@@ -186,22 +190,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     }
   });
 
-  const count = turns.length || 1;
-  const radarMetrics: RadarMetrics = {
-    correctness: hasHistory ? Math.round((sumCorrectness / count) * 10) : 88,
-    reasoning: hasHistory ? Math.round((sumReasoning / count) * 10) : 92,
-    depth: hasHistory ? Math.round((sumDepth / count) * 10) : 84,
-    communication: hasHistory ? Math.round((sumCommunication / count) * 10) : 90,
-    engineering: hasHistory ? Math.round((sumEngineering / count) * 10) : 86,
-  };
-
-  const calculatedOverallScore = Math.round(
-    (radarMetrics.correctness * 0.35 +
-      radarMetrics.reasoning * 0.25 +
-      radarMetrics.depth * 0.2 +
-      radarMetrics.communication * 0.1 +
-      radarMetrics.engineering * 0.1)
-  );
+  const finalScore = state.finalScore || calculateFinalScore(turns.map((t) => t.evaluation));
+  const calculatedOverallScore = finalScore.overallScore;
+  const radarMetrics: RadarMetrics = finalScore.rubricBreakdown;
 
   const baselineKnowledge = 60;
   const currentKnowledge = hasHistory ? Math.min(100, Math.max(60, calculatedOverallScore)) : 60;

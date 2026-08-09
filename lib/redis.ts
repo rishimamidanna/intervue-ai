@@ -35,11 +35,13 @@ function getRedisClient(): Redis | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Local Persistent Fallback Store (for local dev without Upstash keys)
-// ---------------------------------------------------------------------------
+declare global {
+  var _intervueLocalSessionStore: Map<string, InterviewState> | undefined;
+}
 
-const _localFallbackStore = new Map<string, InterviewState>();
+const _localFallbackStore =
+  globalThis._intervueLocalSessionStore ??
+  (globalThis._intervueLocalSessionStore = new Map<string, InterviewState>());
 
 // ---------------------------------------------------------------------------
 // Redis Session Operations

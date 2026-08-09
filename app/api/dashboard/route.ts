@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getState } from "@/server/interview-state";
+import { calculateFinalScore } from "@/lib/scoring";
 import { withErrorHandler } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 
@@ -14,6 +15,9 @@ import { logger } from "@/lib/logger";
  *
  * Owner: Member 2 (Backend / API)
  */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const sessionId = searchParams.get("sessionId");
@@ -62,23 +66,9 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const questionCount = state.questionCount || turns.length;
   const hasHistory = turns.length > 0;
 
-  // 1. Calculate Average Turn Evaluation Score
-  let totalScoreSum = 0;
-  turns.forEach((turn) => {
-    const ev = turn.evaluation;
-    if (ev) {
-      const turnScore =
-        0.35 * (ev.correctness || 0) +
-        0.25 * (ev.reasoning || 0) +
-        0.20 * (ev.depth || 0) +
-        0.10 * (ev.communication || 0) +
-        0.10 * (ev.engineering || 0);
-      totalScoreSum += turnScore;
-    }
-  });
-
-  const avgEvaluationScore = hasHistory ? totalScoreSum / turns.length : 0;
-  const readinessScore = Math.round(avgEvaluationScore * 10);
+  // 1. Calculate Single Source of Truth Score
+  const finalScore = state.finalScore || calculateFinalScore(turns.map((t) => t.evaluation));
+  const readinessScore = finalScore.overallScore;
 
   // 2. Knowledge Twin Score & Mastery
   const twin = state.knowledgeTwin || [];
