@@ -49,7 +49,7 @@ export function HeroHeader() {
 
       {/* Header Action Button */}
       <button
-        onClick={() => router.push("/interview")}
+        onClick={() => router.push("/dashboard")}
         className="relative group overflow-hidden px-5 py-2 rounded-full text-xs font-semibold text-white bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 transition-all duration-300 shadow-[0_0_20px_rgba(124,58,237,0.35)] border border-violet-400/30 flex items-center gap-2"
       >
         <span>Get Started</span>

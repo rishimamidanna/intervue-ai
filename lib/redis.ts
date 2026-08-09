@@ -13,6 +13,7 @@
 
 import { Redis } from "@upstash/redis";
 import type { InterviewState } from "@/types/interview";
+import { logger } from "./logger";
 
 // ---------------------------------------------------------------------------
 // Upstash Client Singleton
@@ -68,7 +69,7 @@ export async function getRedisSession(
       }
       return data as InterviewState;
     } catch (err) {
-      console.warn("[Redis] Failed to fetch from Upstash, checking fallback:", err);
+      logger.warn("[Redis] Failed to fetch from Upstash, checking fallback", { error: String(err), sessionId });
       return _localFallbackStore.get(sessionId) ?? null;
     }
   }

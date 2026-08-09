@@ -66,7 +66,12 @@ export function useInterview(): UseInterviewReturn {
 
       if (res.ok) {
         const data = await res.json();
-        if (data.sessionId) setSessionId(data.sessionId);
+        if (data.sessionId) {
+          setSessionId(data.sessionId);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("intervue_session_id", data.sessionId);
+          }
+        }
         if (data.question) setCurrentQuestion(data.question);
         setStatus("interviewing");
       } else {

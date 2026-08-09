@@ -45,7 +45,7 @@ export async function generateQuestion(
   // Determine the next topic to ask about
   const askedTopics = state.questionHistory.map((t) => t.question.topic);
   const nextTopic =
-    plan.topicOrder.find((t) => !plan.deprioritisedTopics.includes(t)) ??
+    plan.topicOrder.find((t) => !(plan.deprioritisedTopics ?? []).includes(t)) ??
     state.currentTopic ??
     plan.topicOrder[0] ??
     "AI Engineering Fundamentals";

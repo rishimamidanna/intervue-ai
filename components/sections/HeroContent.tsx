@@ -57,7 +57,7 @@ export function HeroContent() {
   function handleStart() {
     if (!isCtaActive) return;
     setIsNavigating(true);
-    router.push("/interview");
+    router.push("/dashboard");
   }
 
   return (

@@ -1,56 +1,88 @@
 /**
  * tests/api/interview.test.ts
  *
- * Integration tests for the interview API routes.
+ * Integration tests for the Interview Controller, Session Manager, and Persistent Storage.
  *
  * Owner: Member 2 (Backend / API)
- *
- * TODO: Install a test runner and HTTP testing library (e.g. Jest + supertest,
- *   or Vitest + @cloudflare/vitest-pool-workers for Next.js route testing).
- *
- * Suggested test scenarios:
- *
- * POST /api/interview/start
- *   1. Returns 400 for missing candidateId
- *   2. Returns 404 for unknown candidateId
- *   3. Returns 200 with sessionId and first question for valid candidateId
- *
- * POST /api/interview/answer
- *   1. Returns 400 for missing sessionId or answer
- *   2. Returns 404 for unknown sessionId
- *   3. Returns 200 with evaluation and next question for valid request
- *   4. Returns 200 with status "completed" when interview is finished
- *
- * GET /api/interview/report
- *   1. Returns 400 when sessionId query param is missing
- *   2. Returns 404 for unknown sessionId
- *   3. Returns 200 with FinalFeedback for a completed session
  */
 
-// TODO: Uncomment and implement after choosing a test runner
+import { describe, it, expect } from "vitest";
+import {
+  initializeInternalInterview,
+  processAnswer,
+  getFinalReport,
+} from "@/server/interview-controller";
+import {
+  createSession,
+  requireSession,
+  sessionExists,
+  terminateSession,
+} from "@/server/session-manager";
 
-/*
-describe('POST /api/interview/start', () => {
-  it('should return 400 when candidateId is missing', async () => {
-    // TODO: Implement
-  });
+describe("Redis Session Manager Integration", () => {
+  it("should create, save, retrieve, and delete session state reliably", async () => {
+    const testSessionId = `test-sess-${Date.now()}`;
+    const candidateId = "alex_chen";
 
-  it('should return 200 with sessionId and first question', async () => {
-    // TODO: Implement with data fixtures
+    // 1. Create Session
+    const createdId = await createSession({
+      sessionId: testSessionId,
+      candidateId,
+      initialTopic: "RAG Core",
+      initialDifficulty: 3,
+    });
+    expect(createdId).toBe(testSessionId);
+
+    // 2. Check Existence
+    const exists = await sessionExists(testSessionId);
+    expect(exists).toBe(true);
+
+    // 3. Require Session & Check Values
+    const state = await requireSession(testSessionId);
+    expect(state).toBeDefined();
+    expect(state.sessionId).toBe(testSessionId);
+    expect(state.candidateId).toBe(candidateId);
+    expect(state.difficulty).toBe(3);
+
+    // 4. Terminate Session
+    await terminateSession(testSessionId);
+    const existsAfterDelete = await sessionExists(testSessionId);
+    expect(existsAfterDelete).toBe(false);
   });
 });
 
-describe('POST /api/interview/answer', () => {
-  it('should return 400 when sessionId is missing', async () => {
-    // TODO: Implement
+describe("Interview Pipeline Controller End-to-End Flow", () => {
+  it("should execute start, answer turn, progress update, and report generation", async () => {
+    // 1. Initialize Interview
+    const startData = await initializeInternalInterview("test_candidate_1");
+
+    expect(startData).toBeDefined();
+    expect(startData.status).toBe("interviewing");
+    expect(startData.sessionId).toBeTruthy();
+    expect(startData.question).toBeDefined();
+    expect(startData.question.text).toBeTruthy();
+
+    const sessionId = startData.sessionId;
+
+    // 2. Process Answer Turn 1
+    const answerResult = await processAnswer(
+      sessionId,
+      startData.question.id,
+      "I would implement hybrid retrieval combining dense vector search and BM25 text search with Reciprocal Rank Fusion."
+    );
+
+    expect(answerResult).toBeDefined();
+    expect(["interviewing", "completed"]).toContain(answerResult.status);
+    expect(answerResult.evaluation).toBeDefined();
+    expect(answerResult.progress.questionCount).toBeGreaterThanOrEqual(1);
+
+    // 3. Fetch Final Report
+    const reportData = await getFinalReport(sessionId);
+
+    expect(reportData).toBeDefined();
+    expect(reportData.feedback).toBeDefined();
+    expect(reportData.feedback.overallScore).toBeGreaterThanOrEqual(0);
+    expect(reportData.feedback.overallScore).toBeLessThanOrEqual(100);
+    expect(reportData.questionHistory.length).toBeGreaterThanOrEqual(1);
   });
 });
-
-describe('GET /api/interview/report', () => {
-  it('should return 400 when sessionId is not in query', async () => {
-    // TODO: Implement
-  });
-});
-*/
-
-export {};

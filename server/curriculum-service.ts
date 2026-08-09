@@ -129,7 +129,7 @@ export function retrieveCurriculumContext(
 
   const scoredDays = curriculumDays.map((day) => {
     let score = 0;
-    const dayText = `${day.topic} ${day.concepts.join(" ")} ${day.learningObjectives.join(" ")} ${day.tools.join(" ")}`.toLowerCase();
+    const dayText = `${day.topic} ${(day.concepts ?? []).join(" ")} ${(day.learningObjectives ?? []).join(" ")} ${(day.tools ?? []).join(" ")}`.toLowerCase();
 
     // Direct topic match
     if (
