@@ -6,16 +6,46 @@
  * Primary interview session hook — manages client-side interview state and
  * coordinates API calls with the official POST /api/interview endpoint.
  *
+ * Uses the official hackathon API:
+ * - Start: POST /api/interview { sessionId, candidate }
+ * - Turn:  POST /api/interview { sessionId, message }
+ *
  * Owner: Member 1 (Frontend / 3D Experience)
  */
 
 import { useState, useCallback } from "react";
 import type { InterviewQuestion, AnswerEvaluation } from "@/types/interview";
 import type { InterviewProgress, InterviewStatus } from "@/types/api";
+import type { CandidateProfile } from "@/types/candidate";
+
+// Default candidate profile (CAND-001: Sarah Johnson from candidates.json)
+const DEFAULT_CANDIDATE: CandidateProfile = {
+  member: {
+    id: "CAND-001",
+    name: "Sarah Johnson",
+    jobRole: "Senior Data Engineer",
+    yearsExperience: 9,
+    education: "MS Computer Science",
+    status: "COMPLETED",
+  },
+  missions: [
+    { day: 7,  title: "Embeddings Explained",              passed: true,  attempts: 1 },
+    { day: 8,  title: "Vector Databases Overview",         passed: true,  attempts: 1 },
+    { day: 10, title: "Retrieval & Matching Engine",       passed: true,  attempts: 2 },
+    { day: 12, title: "Prompt Engineering Fundamentals",   passed: true,  attempts: 4 },
+    { day: 16, title: "Chatbot Backend & API Integration", passed: true,  attempts: 1 },
+    { day: 22, title: "Multi-Agent Orchestration",         passed: true,  attempts: 2 },
+    { day: 23, title: "Model Context Protocol (MCP)",      passed: true,  attempts: 2 },
+    { day: 28, title: "Docker & Kubernetes Deployment",    passed: true,  attempts: 3 },
+    { day: 29, title: "Monitoring, Logging & Observability", skipped: true },
+    { day: 31, title: "Capstone Project & Final Demo",     passed: true,  attempts: 1 },
+  ],
+  signals: { commitDays: 28, missionsCompleted: 30, missionsFirstTry: 20 },
+};
 
 const DEFAULT_QUESTION: InterviewQuestion = {
   id: "scaffold-q-1",
-  text: "Welcome to INTERVUE. Explain how Retrieval-Augmented Generation (RAG) balances context precision with latency.",
+  text: "Welcome to INTERVUE. Initializing your adaptive AI interview session...",
   topic: "Retrieval-Augmented Generation (RAG)",
   curriculumDay: 1,
   difficulty: 2,
@@ -34,9 +64,7 @@ export interface UseInterviewState {
 }
 
 export interface UseInterviewReturn extends UseInterviewState {
-  /** Starts a new interview session */
-  startInterview: (candidateId: string) => Promise<void>;
-  /** Submits the candidate's answer and retrieves the next question */
+  startInterview: (candidateId?: string, candidateProfile?: CandidateProfile) => Promise<void>;
   submitAnswer: (answer: string) => Promise<void>;
 }
 
@@ -46,143 +74,144 @@ export function useInterview(): UseInterviewReturn {
   const [currentQuestion, setCurrentQuestion] = useState<InterviewQuestion | null>(DEFAULT_QUESTION);
   const [lastEvaluation, setLastEvaluation] = useState<AnswerEvaluation | null>(null);
   const [progress, setProgress] = useState<InterviewProgress | null>({
-    questionCount: 1,
-    daysCovered: [1],
+    questionCount: 0,
+    daysCovered: [],
     currentDifficulty: 2,
     minimumRequirementsMet: false,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const startInterview = useCallback(async (candidateId: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/interview/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidateId }),
-      });
+  const startInterview = useCallback(
+    async (_candidateId?: string, candidateProfile?: CandidateProfile) => {
+      setIsLoading(true);
+      setError(null);
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.sessionId) {
-          setSessionId(data.sessionId);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("intervue_session_id", data.sessionId);
+      // Generate a unique session ID
+      const newSessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+      try {
+        // Store session ID for dashboard / report pages
+        if (typeof window !== "undefined") {
+          localStorage.setItem("intervue_session_id", newSessionId);
+        }
+
+        const candidate = candidateProfile ?? DEFAULT_CANDIDATE;
+
+        // Call the official hackathon API: POST /api/interview with candidate payload
+        const res = await fetch("/api/interview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: newSessionId,
+            candidate,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setSessionId(newSessionId);
+          // API returns { reply: "question text", done: false }
+          if (data.reply) {
+            setCurrentQuestion({
+              id: `q-${Date.now()}`,
+              text: data.reply,
+              topic: "AI Engineering",
+              curriculumDay: 1,
+              difficulty: 2,
+              reason: "AI-generated opening question",
+              expectedConcepts: [],
+            });
           }
+          setStatus("interviewing");
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.error("[useInterview] Start failed:", errData);
+          setError("Failed to start interview. Please refresh and try again.");
+          setSessionId(newSessionId);
+          setCurrentQuestion(DEFAULT_QUESTION);
         }
-        if (data.question) setCurrentQuestion(data.question);
-        setStatus("interviewing");
-      } else {
-        const fallbackSessionId = `session-${Date.now()}`;
-        setSessionId(fallbackSessionId);
+      } catch (err) {
+        console.error("[useInterview] Network error on start:", err);
+        setError("Network error. Is the server running?");
+        setSessionId(newSessionId);
         setCurrentQuestion(DEFAULT_QUESTION);
-        setStatus("interviewing");
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      const fallbackSessionId = `session-${Date.now()}`;
-      setSessionId(fallbackSessionId);
-      setCurrentQuestion(DEFAULT_QUESTION);
-      setStatus("interviewing");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
-  const submitAnswer = useCallback(async (answer: string) => {
-    if (!answer.trim()) return;
-    setIsLoading(true);
-    setError(null);
+  const submitAnswer = useCallback(
+    async (answer: string) => {
+      if (!answer.trim()) return;
+      setIsLoading(true);
+      setError(null);
 
-    let activeSessionId = sessionId;
-    if (!activeSessionId) {
-      activeSessionId = `session-${Date.now()}`;
-      setSessionId(activeSessionId);
-    }
+      const activeSessionId = sessionId ?? `session-${Date.now()}`;
 
-    try {
-      const res = await fetch("/api/interview/answer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: activeSessionId,
-          questionId: currentQuestion?.id || "q-1",
-          answer,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.evaluation) {
-          setLastEvaluation(data.evaluation);
-        }
-        if (data.nextQuestion) {
-          setCurrentQuestion(data.nextQuestion);
-        }
-        if (data.progress) {
-          setProgress(data.progress);
-        }
-        if (data.done === true || data.status === "completed") {
-          setStatus("completed");
-        } else if (data.status) {
-          setStatus(data.status);
-        }
-      } else {
-        // Local simulation fallback if network error occurs
-        setProgress((prev) => {
-          const nextCount = (prev?.questionCount || 1) + 1;
-          const nextDay = ((nextCount - 1) % 4) + 1;
-          const days = prev?.daysCovered.includes(nextDay)
-            ? prev.daysCovered
-            : [...(prev?.daysCovered || [1]), nextDay];
-          return {
-            questionCount: nextCount,
-            daysCovered: days,
-            currentDifficulty: 2,
-            minimumRequirementsMet: nextCount >= 8 && days.length >= 4,
-          };
+      try {
+        // Call the official hackathon API: POST /api/interview with message payload
+        const res = await fetch("/api/interview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: activeSessionId,
+            message: answer,
+          }),
         });
 
-        setCurrentQuestion({
-          id: `q-${Date.now()}`,
-          text: `Follow-up question on your response: "${answer.slice(0, 45)}..." How would you optimize indexing and query latency for this approach?`,
-          topic: "Production AI Systems",
-          curriculumDay: 2,
-          difficulty: 3,
-          reason: "Adaptive follow-up question",
-          expectedConcepts: ["HNSW", "IVF", "Quantization", "Sharding"],
-        });
-      }
-    } catch {
-      // Local simulation fallback
-      setProgress((prev) => {
-        const nextCount = (prev?.questionCount || 1) + 1;
-        const nextDay = ((nextCount - 1) % 4) + 1;
-        const days = prev?.daysCovered.includes(nextDay)
-          ? prev.daysCovered
-          : [...(prev?.daysCovered || [1]), nextDay];
-        return {
-          questionCount: nextCount,
-          daysCovered: days,
-          currentDifficulty: 2,
-          minimumRequirementsMet: nextCount >= 8 && days.length >= 4,
-        };
-      });
+        if (res.ok) {
+          const data = await res.json();
 
-      setCurrentQuestion({
-        id: `q-${Date.now()}`,
-        text: `Follow-up question on your response: "${answer.slice(0, 45)}..." How would you optimize indexing and query latency for this approach?`,
-        topic: "Production AI Systems",
-        curriculumDay: 2,
-        difficulty: 3,
-        reason: "Adaptive follow-up question",
-        expectedConcepts: ["HNSW", "IVF", "Quantization", "Sharding"],
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessionId, currentQuestion]);
+          // API returns { reply, done, feedback? }
+          if (data.done === true) {
+            // Interview complete — redirect to report
+            setStatus("completed");
+            if (data.feedback) {
+              // Store feedback in localStorage for the report page
+              if (typeof window !== "undefined") {
+                localStorage.setItem(
+                  `intervue_feedback_${activeSessionId}`,
+                  JSON.stringify(data.feedback)
+                );
+              }
+            }
+          } else if (data.reply) {
+            // Next question received
+            setCurrentQuestion((prev) => ({
+              id: `q-${Date.now()}`,
+              text: data.reply,
+              topic: prev?.topic ?? "AI Engineering",
+              curriculumDay: (prev?.curriculumDay ?? 1) + 1,
+              difficulty: prev?.difficulty ?? 2,
+              reason: "AI-generated follow-up",
+              expectedConcepts: [],
+            }));
+
+            // Update progress counter
+            setProgress((prev) => ({
+              questionCount: (prev?.questionCount ?? 0) + 1,
+              daysCovered: prev?.daysCovered ?? [],
+              currentDifficulty: prev?.currentDifficulty ?? 2,
+              minimumRequirementsMet: (prev?.questionCount ?? 0) + 1 >= 8,
+            }));
+          }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.error("[useInterview] Answer submission failed:", errData);
+          setError("Failed to process answer. Please try again.");
+        }
+      } catch (err) {
+        console.error("[useInterview] Network error on answer:", err);
+        setError("Network error while submitting answer.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [sessionId]
+  );
 
   return {
     status,
