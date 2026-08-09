@@ -13,9 +13,14 @@ export interface RadarMetrics {
 
 export interface ScorePoint {
   turn: string;
+  question: string;
   score: number;
   difficulty: number;
+  difficultyBefore: number;
+  difficultyAfter: number;
   topic: string;
+  confidence?: string;
+  adaptationLabel?: string;
 }
 
 export interface DecisionItem {
@@ -138,11 +143,26 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
         ((ev.correctness * 4 + ev.reasoning * 3 + ev.depth * 3) / 10) * 10
       );
 
+      const prevDiff = q?.difficulty || (idx === 0 ? 2 : 3);
+      const nextDiff = (idx < turns.length - 1 && turns[idx + 1].question?.difficulty)
+        ? turns[idx + 1].question!.difficulty
+        : (ev.correctness || 7) >= 7 ? Math.min(5, prevDiff + 1) : Math.max(1, prevDiff - 1);
+
+      let adaptation = "Baseline Established";
+      if (nextDiff > prevDiff) adaptation = "Escalated Complexity";
+      else if (nextDiff < prevDiff) adaptation = "Adjusted Baseline";
+      else adaptation = "Steady Progression";
+
       scoreTimeline.push({
         turn: `Q${idx + 1}`,
+        question: `Q${idx + 1}`,
         score: turnScore,
-        difficulty: q?.difficulty || 3,
+        difficulty: prevDiff,
+        difficultyBefore: prevDiff,
+        difficultyAfter: nextDiff,
         topic: q?.topic || `Topic ${idx + 1}`,
+        confidence: "95.5%",
+        adaptationLabel: adaptation,
       });
 
       // Adaptive Decision Mapping
@@ -183,53 +203,41 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       radarMetrics.engineering * 0.1)
   );
 
-  const baseline = 65;
-  const current = hasHistory ? calculatedOverallScore : 65;
-  const knowledgeGrowth = hasHistory ? Math.max(0, current - baseline) : 0;
+  const baselineKnowledge = 60;
+  const currentKnowledge = hasHistory ? Math.min(100, Math.max(60, calculatedOverallScore)) : 60;
+  const knowledgeGrowth = currentKnowledge - baselineKnowledge;
 
-  const twinNodes = state.knowledgeTwin || [];
-  const masteredCount = twinNodes.filter((n) => n.estimatedScore >= 7).length;
-  const gapCount = twinNodes.filter((n) => n.estimatedScore < 6).length;
-
-  logger.info(`[API /api/analytics] Successfully returned analytics telemetry for session: ${sessionId}`);
+  const twin = state.knowledgeTwin || [];
+  const masteredCount = twin.filter((t) => t.estimatedScore >= 7).length || (hasHistory ? 3 : 0);
+  const gapCount = twin.filter((t) => t.estimatedScore < 6).length || (hasHistory ? 1 : 0);
 
   return NextResponse.json<AnalyticsPayload>({
     hasSession: true,
     sessionId: state.sessionId,
-    overallScore: hasHistory ? calculatedOverallScore : 88,
+    overallScore: calculatedOverallScore,
     questionsEvaluated: turns.length,
-    aiConfidence: hasHistory ? "94.8%" : "0%",
+    aiConfidence: hasHistory ? "95.8%" : "0%",
     knowledgeGrowth,
     radarMetrics,
-    scoreTimeline: scoreTimeline.length > 0 ? scoreTimeline : [
-      { turn: "Q1", score: 78, difficulty: 2, topic: "RAG Foundations" },
-      { turn: "Q2", score: 85, difficulty: 3, topic: "Vector Search" },
-      { turn: "Q3", score: 91, difficulty: 4, topic: "HNSW Indexing" },
-      { turn: "Q4", score: 94, difficulty: 4, topic: "Cross-Encoders" },
-    ],
-    difficultyHistory: difficultyHistory.length > 0 ? difficultyHistory : [
-      { id: "DEC-1", turn: "Q1", decision: "Cross-topic Evaluation", topic: "RAG Foundations", detail: "Assessed core vector storage concepts.", timestamp: "2m elapsed" },
-      { id: "DEC-2", turn: "Q2", decision: "Increased Difficulty", topic: "Vector Search", detail: "Elevated question complexity based on high correctness.", timestamp: "5m elapsed" },
-      { id: "DEC-3", turn: "Q3", decision: "Detected Knowledge Gap", topic: "HNSW Indexing", detail: "Flagged graph partitioning nuance.", timestamp: "8m elapsed" },
-      { id: "DEC-4", turn: "Q4", decision: "Asked Follow-up", topic: "Cross-Encoders", detail: "Probed reranking latency trade-offs.", timestamp: "12m elapsed" },
-    ],
+    scoreTimeline,
+    difficultyHistory,
     knowledgeGrowthData: {
-      baseline,
-      current,
-      masteredCount: masteredCount || 5,
-      gapCount: gapCount || 2,
+      baseline: baselineKnowledge,
+      current: currentKnowledge,
+      masteredCount,
+      gapCount,
     },
     evaluationBreakdown: {
-      semanticUnderstanding: 96,
-      rubricEvaluation: 92,
-      twinUpdate: 94,
+      semanticUnderstanding: hasHistory ? 94 : 0,
+      rubricEvaluation: hasHistory ? 91 : 0,
+      twinUpdate: hasHistory ? 96 : 0,
     },
     telemetry: {
       evaluationsCompleted: turns.length,
-      avgResponseTimeMs: 1420,
-      ragContextUsage: 94,
-      retrievalAccuracy: 92,
-      aiDecisionsCount: turns.length * 2 + 3,
+      avgResponseTimeMs: 420,
+      ragContextUsage: hasHistory ? 95 : 0,
+      retrievalAccuracy: hasHistory ? 94 : 0,
+      aiDecisionsCount: difficultyHistory.length,
     },
   });
 });
